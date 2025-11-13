@@ -21,11 +21,17 @@ A comprehensive Python tool to help home buyers in Athens-Clarke County, Georgia
 - ✅ **Trend Analysis**: Automated identification of achievements and areas for improvement
 - ✅ **Complete Reports**: Combined school assignment + performance data in one lookup
 
-**AI Assistant (NEW!):**
+**AI Assistant:**
 - 🤖 **Natural Language Q&A**: Ask questions in plain English
 - 🤖 **Intelligent Analysis**: Claude AI analyzes school data and provides balanced answers
 - 🤖 **Context-Aware**: Understands nuanced questions about school quality
 - 🤖 **Comprehensive**: Considers test scores, demographics, and other factors
+
+**Web Interface (NEW!):**
+- 🌐 **Browser-Based**: Easy-to-use web interface powered by Streamlit
+- 🌐 **Professional Design**: Clean, modern UI with responsive layout
+- 🌐 **Interactive**: Real-time search with AI-powered responses
+- 🌐 **Source Citations**: All answers include verifiable sources and links
 
 ### Quick Start
 
@@ -34,6 +40,7 @@ A comprehensive Python tool to help home buyers in Athens-Clarke County, Georgia
 ```bash
 pip install -r requirements.txt
 pip install anthropic  # For AI features
+pip install streamlit  # For web interface
 ```
 
 This installs:
@@ -68,7 +75,23 @@ python3 school_info.py "123 Main Street, Athens, GA 30601"
 
 ### Usage
 
-#### Method 1: Complete School Information (RECOMMENDED)
+#### Method 1: Web Interface (EASIEST - RECOMMENDED)
+
+Use the browser-based interface for the best experience:
+
+```bash
+export ANTHROPIC_API_KEY='your-api-key-here'
+streamlit run streamlit_app.py
+```
+
+The app will open in your browser. Then:
+1. Enter an Athens address (e.g., "150 Hancock Avenue")
+2. Ask a question (e.g., "How good are the schools?")
+3. Click "Search" to get AI-powered answers with citations
+
+See [WEB_APP_GUIDE.md](WEB_APP_GUIDE.md) for detailed instructions.
+
+#### Method 2: Complete School Information (Python API)
 
 Get both school assignments AND performance data:
 
@@ -87,7 +110,7 @@ print(f"Test Scores: {info.elementary_performance.test_scores}")
 print(f"Demographics: {info.elementary_performance.demographics}")
 ```
 
-#### Method 2: School Assignment Only
+#### Method 3: School Assignment Only
 
 If you only need to know which schools serve an address:
 
@@ -101,7 +124,7 @@ print(f"Middle: {assignment.middle}")
 print(f"High: {assignment.high}")
 ```
 
-#### Method 3: School Performance Only
+#### Method 4: School Performance Only
 
 If you already know the school name and want performance data:
 
@@ -117,7 +140,7 @@ for score in perf.test_scores:
     print(f"{score.subject}: {score.total_proficient_pct}% proficient")
 ```
 
-#### Method 4: AI Assistant (NEW!)
+#### Method 5: AI Assistant (Command Line)
 
 Ask questions in natural language and get intelligent AI-powered answers:
 
@@ -184,6 +207,7 @@ The tool was tested and verified with these Athens addresses:
 ### Files
 
 **Main Tools:**
+- `streamlit_app.py` - **WEB INTERFACE**: Browser-based UI (RECOMMENDED)
 - `school_info.py` - **MAIN TOOL**: Combined lookup (assignments + performance)
 - `ai_school_assistant.py` - **AI ASSISTANT**: Natural language Q&A with Claude
 - `school_lookup_ai_cli.py` - Interactive AI-powered CLI
@@ -198,6 +222,11 @@ The tool was tested and verified with these Athens addresses:
 - `data/street_index.json` - Extracted street-to-school mappings (1,957 entries)
 - `data/street_index.pdf` - Official Clarke County Schools street index
 - `data/performance/*.csv` - Georgia GOSA school performance data (2023-24)
+
+**Documentation:**
+- `README.md` - Main documentation
+- `WEB_APP_GUIDE.md` - Web interface setup and usage guide
+- `TEST_RESULTS.md` - Test documentation and validation results
 
 **Utilities:**
 - `parse_street_index.py` - Street index parsing utilities
