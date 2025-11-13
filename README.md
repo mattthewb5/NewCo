@@ -13,7 +13,7 @@ A comprehensive Python tool to help home buyers in Athens-Clarke County, Georgia
 - ✅ **Parameter Matching**: Handles complex address ranges ("497 and below", "odd numbers only", etc.)
 - ✅ **Multi-Level**: Returns Elementary, Middle, and High school assignments
 
-**School Performance Data (NEW!):**
+**School Performance Data:**
 - ✅ **Test Scores**: Georgia Milestones EOG/EOC proficiency rates by subject
 - ✅ **Graduation Rates**: 4-year cohort graduation rates for high schools
 - ✅ **SAT Scores**: Average SAT scores for high schools
@@ -21,18 +21,26 @@ A comprehensive Python tool to help home buyers in Athens-Clarke County, Georgia
 - ✅ **Trend Analysis**: Automated identification of achievements and areas for improvement
 - ✅ **Complete Reports**: Combined school assignment + performance data in one lookup
 
+**AI Assistant (NEW!):**
+- 🤖 **Natural Language Q&A**: Ask questions in plain English
+- 🤖 **Intelligent Analysis**: Claude AI analyzes school data and provides balanced answers
+- 🤖 **Context-Aware**: Understands nuanced questions about school quality
+- 🤖 **Comprehensive**: Considers test scores, demographics, and other factors
+
 ### Quick Start
 
 #### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+pip install anthropic  # For AI features
 ```
 
 This installs:
 - `shapely` - For spatial/geometric operations
 - `geopy` - For geocoding addresses
 - `requests` - For downloading data
+- `anthropic` - For AI assistant (optional)
 
 #### 2. Data Setup
 
@@ -109,6 +117,37 @@ for score in perf.test_scores:
     print(f"{score.subject}: {score.total_proficient_pct}% proficient")
 ```
 
+#### Method 4: AI Assistant (NEW!)
+
+Ask questions in natural language and get intelligent AI-powered answers:
+
+```python
+from ai_school_assistant import ask_claude_about_schools
+import os
+
+# Set your API key
+os.environ['ANTHROPIC_API_KEY'] = 'your-api-key-here'
+
+# Ask a question
+response = ask_claude_about_schools(
+    address="150 Hancock Avenue, Athens, GA 30601",
+    question="How good are the schools at this address?"
+)
+
+print(response)
+```
+
+**Interactive AI CLI:**
+```bash
+export ANTHROPIC_API_KEY='your-api-key-here'
+python3 school_lookup_ai_cli.py
+```
+
+Then ask questions like:
+- "What are the test scores at 150 Hancock Avenue?"
+- "Are the schools good near 585 Reese Street?"
+- "Tell me about school quality for 195 Hoyt Street"
+
 ### How It Works
 
 **School Assignment:**
@@ -146,9 +185,13 @@ The tool was tested and verified with these Athens addresses:
 
 **Main Tools:**
 - `school_info.py` - **MAIN TOOL**: Combined lookup (assignments + performance)
+- `ai_school_assistant.py` - **AI ASSISTANT**: Natural language Q&A with Claude
+- `school_lookup_ai_cli.py` - Interactive AI-powered CLI
+- `school_lookup_cli.py` - Standard interactive CLI
 - `school_performance.py` - School performance data module (test scores, demographics, etc.)
 - `street_index_lookup.py` - Street index-based school assignment lookup
 - `extract_full_street_index.py` - PDF parser to extract street index data
+- `test_addresses.py` - Automated test suite with 10 test addresses
 - `school_district_lookup.py` - Legacy GIS-based lookup tool
 
 **Data:**
