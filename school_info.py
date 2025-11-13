@@ -44,32 +44,62 @@ def get_school_info(address: str) -> Optional[CompleteSchoolInfo]:
     Returns:
         CompleteSchoolInfo with both assignments and performance data
         None if address not found
+
+    Raises:
+        ValueError: If address is empty or invalid format
     """
-    # Step 1: Look up which schools serve this address
-    assignment = lookup_school_district(address)
+    # Validate input
+    if not address or not address.strip():
+        raise ValueError("Address cannot be empty")
 
-    if not assignment or not assignment.elementary:
+    address = address.strip()
+
+    try:
+        # Step 1: Look up which schools serve this address
+        assignment = lookup_school_district(address)
+
+        if not assignment or not assignment.elementary:
+            return None
+
+        # Step 2: Get performance data for each school
+        # Use try-except to handle cases where performance data might not be available
+        try:
+            elementary_perf = get_school_performance(assignment.elementary)
+        except Exception as e:
+            elementary_perf = None
+            # Could log this error if logging was set up
+
+        try:
+            middle_perf = get_school_performance(assignment.middle)
+        except Exception as e:
+            middle_perf = None
+
+        try:
+            high_perf = get_school_performance(assignment.high)
+        except Exception as e:
+            high_perf = None
+
+        # Step 3: Combine into complete info
+        info = CompleteSchoolInfo(
+            address=address,
+            elementary=assignment.elementary,
+            middle=assignment.middle,
+            high=assignment.high,
+            elementary_performance=elementary_perf,
+            middle_performance=middle_perf,
+            high_performance=high_perf,
+            street_matched=assignment.street_matched,
+            parameters_matched=assignment.parameters_matched
+        )
+
+        return info
+
+    except Exception as e:
+        # Re-raise ValueError, catch all others
+        if isinstance(e, ValueError):
+            raise
+        # Return None for other errors (street not found, etc.)
         return None
-
-    # Step 2: Get performance data for each school
-    elementary_perf = get_school_performance(assignment.elementary)
-    middle_perf = get_school_performance(assignment.middle)
-    high_perf = get_school_performance(assignment.high)
-
-    # Step 3: Combine into complete info
-    info = CompleteSchoolInfo(
-        address=address,
-        elementary=assignment.elementary,
-        middle=assignment.middle,
-        high=assignment.high,
-        elementary_performance=elementary_perf,
-        middle_performance=middle_perf,
-        high_performance=high_perf,
-        street_matched=assignment.street_matched,
-        parameters_matched=assignment.parameters_matched
-    )
-
-    return info
 
 
 def format_complete_report(info: CompleteSchoolInfo) -> str:
