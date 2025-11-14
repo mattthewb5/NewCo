@@ -10,6 +10,16 @@ from school_info import get_school_info, format_complete_report
 from ai_school_assistant import SchoolAIAssistant
 from crime_analysis import analyze_crime_near_address, format_analysis_report
 from unified_ai_assistant import UnifiedAIAssistant
+from crime_visualizations import (
+    create_category_chart_data,
+    create_trend_chart_data,
+    create_comparison_chart_data,
+    create_safety_score_html,
+    create_comparison_html,
+    format_crime_stats_table,
+    get_safety_color,
+    get_category_colors
+)
 
 # Page configuration
 st.set_page_config(
@@ -260,22 +270,79 @@ if search_button:
 
                 # Show crime summary if included
                 if include_crime and result['crime_analysis']:
-                    st.markdown("### 🛡️ Crime & Safety Summary")
                     crime = result['crime_analysis']
-                    col1, col2, col3, col4 = st.columns(4)
+
+                    # Color-coded header based on safety score
+                    safety_color = get_safety_color(crime.safety_score.score)
+                    st.markdown(f"""
+                    <div style="background-color: {safety_color}20; border-left: 4px solid {safety_color}; padding: 1em; border-radius: 0.5em; margin: 1em 0;">
+                        <h3 style="color: {safety_color}; margin: 0;">🛡️ Crime & Safety Analysis</h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Safety gauge and key metrics
+                    col1, col2 = st.columns([1, 2])
+
                     with col1:
-                        st.metric("Safety Score", f"{crime.safety_score.score}/100",
-                                 delta=crime.safety_score.level, delta_color="off")
+                        # Safety score visual
+                        safety_html = create_safety_score_html(crime.safety_score.score, crime.safety_score.level)
+                        st.markdown(safety_html, unsafe_allow_html=True)
+
                     with col2:
-                        st.metric("Total Crimes", f"{crime.statistics.total_crimes}",
-                                 help=f"Last {crime.time_period_months} months, {crime.radius_miles} mile radius")
-                    with col3:
-                        st.metric("Violent Crimes", f"{crime.statistics.violent_percentage:.1f}%",
-                                 help=f"{crime.statistics.violent_count} violent crimes")
-                    with col4:
-                        trend_symbol = "📈" if crime.trends.trend == "increasing" else "📉" if crime.trends.trend == "decreasing" else "➡️"
-                        st.metric("Trend", f"{trend_symbol} {crime.trends.trend.title()}",
-                                 delta=f"{crime.trends.change_percentage:+.1f}%")
+                        # Key statistics table
+                        stats_table = format_crime_stats_table(crime)
+
+                        # Overview
+                        st.markdown("**Overview:**")
+                        for key, value in stats_table['Overview'].items():
+                            st.markdown(f"• {key}: **{value}**")
+
+                        # Most common crime
+                        st.markdown(f"• Most Common: **{crime.statistics.most_common_crime}** ({crime.statistics.most_common_count} incidents)")
+
+                    st.markdown("")  # Spacing
+
+                    # Charts in tabs for better mobile experience
+                    tab1, tab2, tab3 = st.tabs(["📊 By Category", "📈 Trends", "⚖️ Comparison"])
+
+                    with tab1:
+                        category_data = create_category_chart_data(crime)
+                        st.bar_chart(category_data, color=list(get_category_colors().values()))
+
+                        # Show percentages below chart
+                        col_a, col_b, col_c, col_d = st.columns(4)
+                        with col_a:
+                            st.metric("Violent", f"{crime.statistics.violent_percentage:.1f}%")
+                        with col_b:
+                            st.metric("Property", f"{crime.statistics.property_percentage:.1f}%")
+                        with col_c:
+                            st.metric("Traffic", f"{crime.statistics.traffic_percentage:.1f}%")
+                        with col_d:
+                            st.metric("Other", f"{crime.statistics.other_percentage:.1f}%")
+
+                    with tab2:
+                        trend_data = create_trend_chart_data(crime)
+                        st.bar_chart(trend_data)
+
+                        # Show trend details
+                        trend_color = "green" if crime.trends.trend == "decreasing" else "red" if crime.trends.trend == "increasing" else "gray"
+                        trend_symbol = "📉" if crime.trends.trend == "decreasing" else "📈" if crime.trends.trend == "increasing" else "➡️"
+
+                        st.markdown(f"""
+                        <div style="text-align: center; padding: 1em; background: {trend_color}20; border-radius: 0.5em; margin-top: 1em;">
+                            <div style="font-size: 1.5em;">{trend_symbol}</div>
+                            <div style="font-weight: 600; color: {trend_color};">
+                                {crime.trends.trend.title()}: {crime.trends.change_percentage:+.1f}%
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with tab3:
+                        comparison_html = create_comparison_html(crime)
+                        if comparison_html:
+                            st.markdown(comparison_html, unsafe_allow_html=True)
+                        else:
+                            st.info("Comparison data not available")
 
                 st.divider()
 
