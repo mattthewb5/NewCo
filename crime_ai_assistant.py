@@ -190,7 +190,7 @@ CRITICAL INSTRUCTIONS FOR ACCURATE AND BALANCED RESPONSES:
    SECTION 2: SUPPORTING STATISTICS (bulleted list)
    - Cite specific numbers and percentages
    - Include total crimes, crimes per month, category breakdown
-   - Reference the safety score (X out of 5)
+   - Reference the safety score (X out of 100)
 
    SECTION 3: TREND INFORMATION (if relevant to the question)
    - State whether crime is increasing, decreasing, or stable
@@ -251,7 +251,7 @@ Use bullet points to cite specific numbers:
 • Total crimes and crimes per month
 • Category breakdown (violent %, property %, etc.)
 • Comparison to Athens average (if provided in data - e.g., "X% more/less than Athens average")
-• Safety score (X out of 5)
+• Safety score (X out of 100)
 • Most common crime types
 
 SECTION 3: TREND INFORMATION

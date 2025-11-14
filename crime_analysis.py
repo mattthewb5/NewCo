@@ -253,14 +253,15 @@ def analyze_trends(crimes: List[CrimeIncident]) -> TrendAnalysis:
 def calculate_safety_score(statistics: CrimeStatistics, trends: TrendAnalysis,
                           radius_miles: float) -> SafetyScore:
     """
-    Calculate a transparent safety score (1-5, where 5 is safest)
+    Calculate a transparent safety score (1-100, where 100 is safest)
 
     Scoring Logic:
-    - Start with base score of 5.0
+    - Start with base score of 100
     - Deduct for crime density (crimes per month per 0.5 sq miles)
     - Deduct for violent crime percentage
-    - Deduct for increasing crime trends
-    - Round to nearest integer (1-5)
+    - Deduct for increasing crime trends / bonus for decreasing
+    - Designed to scale across U.S. cities with varying crime levels
+    - Clamp to 1-100 range
 
     Args:
         statistics: Crime statistics
@@ -270,7 +271,7 @@ def calculate_safety_score(statistics: CrimeStatistics, trends: TrendAnalysis,
     Returns:
         SafetyScore object with score and explanation
     """
-    base_score = 5.0
+    base_score = 100
     factors = {}
     explanations = []
 
@@ -279,64 +280,87 @@ def calculate_safety_score(statistics: CrimeStatistics, trends: TrendAnalysis,
     area_factor = (radius_miles / 0.5) ** 2
     normalized_crimes_per_month = statistics.crimes_per_month / area_factor
 
-    if normalized_crimes_per_month >= 50:
-        crime_density_deduction = 1.5
+    # Crime density deductions (designed for U.S. scale)
+    if normalized_crimes_per_month >= 75:
+        crime_density_deduction = 50
+        explanations.append(f"Extreme crime density ({normalized_crimes_per_month:.1f} crimes/month)")
+    elif normalized_crimes_per_month >= 50:
+        crime_density_deduction = 40
         explanations.append(f"Very high crime density ({normalized_crimes_per_month:.1f} crimes/month)")
     elif normalized_crimes_per_month >= 30:
-        crime_density_deduction = 1.0
+        crime_density_deduction = 30
         explanations.append(f"High crime density ({normalized_crimes_per_month:.1f} crimes/month)")
     elif normalized_crimes_per_month >= 15:
-        crime_density_deduction = 0.5
+        crime_density_deduction = 20
         explanations.append(f"Moderate crime density ({normalized_crimes_per_month:.1f} crimes/month)")
-    else:
-        crime_density_deduction = 0.0
+    elif normalized_crimes_per_month >= 5:
+        crime_density_deduction = 10
         explanations.append(f"Low crime density ({normalized_crimes_per_month:.1f} crimes/month)")
+    else:
+        crime_density_deduction = 0
+        explanations.append(f"Very low crime density ({normalized_crimes_per_month:.1f} crimes/month)")
 
     factors['crime_density'] = -crime_density_deduction
 
     # Factor 2: Violent crime percentage
-    if statistics.violent_percentage >= 20:
-        violent_deduction = 1.0
+    if statistics.violent_percentage >= 30:
+        violent_deduction = 25
+        explanations.append(f"Very high violent crime rate ({statistics.violent_percentage:.1f}%)")
+    elif statistics.violent_percentage >= 20:
+        violent_deduction = 20
         explanations.append(f"High violent crime rate ({statistics.violent_percentage:.1f}%)")
+    elif statistics.violent_percentage >= 15:
+        violent_deduction = 15
+        explanations.append(f"Concerning violent crime rate ({statistics.violent_percentage:.1f}%)")
     elif statistics.violent_percentage >= 10:
-        violent_deduction = 0.5
+        violent_deduction = 10
         explanations.append(f"Moderate violent crime rate ({statistics.violent_percentage:.1f}%)")
-    else:
-        violent_deduction = 0.0
+    elif statistics.violent_percentage >= 5:
+        violent_deduction = 5
         explanations.append(f"Low violent crime rate ({statistics.violent_percentage:.1f}%)")
+    else:
+        violent_deduction = 0
+        explanations.append(f"Very low violent crime rate ({statistics.violent_percentage:.1f}%)")
 
     factors['violent_crime'] = -violent_deduction
 
     # Factor 3: Crime trends
-    if trends.trend == "increasing" and trends.change_percentage >= 20:
-        trend_deduction = 0.5
+    if trends.trend == "increasing" and trends.change_percentage >= 50:
+        trend_adjustment = -15
+        explanations.append(f"Crime is rapidly increasing ({trends.change_percentage:+.1f}%)")
+    elif trends.trend == "increasing" and trends.change_percentage >= 20:
+        trend_adjustment = -10
         explanations.append(f"Crime is significantly increasing ({trends.change_percentage:+.1f}%)")
     elif trends.trend == "increasing":
-        trend_deduction = 0.25
+        trend_adjustment = -5
         explanations.append(f"Crime is slightly increasing ({trends.change_percentage:+.1f}%)")
+    elif trends.trend == "decreasing" and trends.change_percentage <= -20:
+        trend_adjustment = 5  # Bonus for significant decrease
+        explanations.append(f"Crime is significantly decreasing ({trends.change_percentage:+.1f}%) ✓")
     elif trends.trend == "decreasing":
-        trend_deduction = -0.25  # Bonus for decreasing crime
+        trend_adjustment = 3  # Bonus for decrease
         explanations.append(f"Crime is decreasing ({trends.change_percentage:+.1f}%) ✓")
     else:
-        trend_deduction = 0.0
+        trend_adjustment = 0
         explanations.append(f"Crime is stable ({trends.change_percentage:+.1f}%)")
 
-    factors['trend'] = -trend_deduction
+    factors['trend'] = trend_adjustment
 
     # Calculate final score
     final_score = base_score + factors['crime_density'] + factors['violent_crime'] + factors['trend']
-    final_score = max(1, min(5, round(final_score)))  # Clamp to 1-5
+    final_score = max(1, min(100, round(final_score)))  # Clamp to 1-100
 
-    # Determine level
-    score_levels = {
-        5: "Very Safe",
-        4: "Safe",
-        3: "Moderate",
-        2: "Concerning",
-        1: "High Risk"
-    }
-
-    level = score_levels[final_score]
+    # Determine level (for 1-100 scale)
+    if final_score >= 80:
+        level = "Very Safe"
+    elif final_score >= 60:
+        level = "Safe"
+    elif final_score >= 40:
+        level = "Moderate"
+    elif final_score >= 20:
+        level = "Concerning"
+    else:
+        level = "High Risk"
     explanation = " | ".join(explanations)
 
     return SafetyScore(
@@ -481,8 +505,10 @@ def format_analysis_report(analysis: CrimeAnalysis) -> str:
     lines.append("=" * 80)
     lines.append("SAFETY SCORE")
     lines.append("=" * 80)
-    score_bar = "★" * analysis.safety_score.score + "☆" * (5 - analysis.safety_score.score)
-    lines.append(f"Score: {analysis.safety_score.score}/5  {score_bar}")
+    # Visual bar for 1-100 scale (show 20 segments, each representing 5 points)
+    filled_segments = analysis.safety_score.score // 5
+    score_bar = "█" * filled_segments + "░" * (20 - filled_segments)
+    lines.append(f"Score: {analysis.safety_score.score}/100  [{score_bar}]")
     lines.append(f"Level: {analysis.safety_score.level}")
     lines.append(f"\nFactors:")
     lines.append(f"  {analysis.safety_score.explanation}")
@@ -551,16 +577,16 @@ def format_analysis_report(analysis: CrimeAnalysis) -> str:
     lines.append("=" * 80)
     lines.append("SCORING METHODOLOGY")
     lines.append("=" * 80)
-    lines.append("Safety Score (1-5, 5 = safest):")
-    lines.append("  • Starts at 5.0 (perfect score)")
-    lines.append("  • -0.5 to -1.5 for crime density (crimes per month per area)")
-    lines.append("  • -0.5 to -1.0 for violent crime percentage")
-    lines.append("  • -0.25 to -0.5 for increasing crime trends")
-    lines.append("  • +0.25 bonus for decreasing crime trends")
+    lines.append("Safety Score (1-100, 100 = safest):")
+    lines.append("  • Starts at 100 (perfect score)")
+    lines.append("  • Crime density: 0 to -50 points (based on crimes/month)")
+    lines.append("  • Violent crime %: 0 to -25 points (based on % of crimes that are violent)")
+    lines.append("  • Crime trends: -15 to +5 points (increasing = penalty, decreasing = bonus)")
+    lines.append("  • Designed to scale across U.S. cities with varying crime levels")
     lines.append("")
     lines.append("Score Breakdown:")
     for factor, value in analysis.safety_score.factors.items():
-        lines.append(f"  • {factor}: {value:+.2f}")
+        lines.append(f"  • {factor}: {value:+.0f} points")
     lines.append("")
     lines.append("=" * 80)
     lines.append("⚠️  DATA NOTES:")
