@@ -336,14 +336,15 @@ def calculate_safety_score(statistics: CrimeStatistics, trends: TrendAnalysis,
 
 
 def analyze_crime_near_address(address: str, radius_miles: float = 0.5,
-                               months_back: int = 60) -> Optional[CrimeAnalysis]:
+                               months_back: int = 12) -> Optional[CrimeAnalysis]:
     """
     Comprehensive crime analysis for a specific address
 
     Args:
         address: Street address in Athens-Clarke County
         radius_miles: Search radius in miles (default: 0.5)
-        months_back: How many months of history (default: 60 = 5 years)
+        months_back: How many months of history (default: 12 = 1 year)
+                     Can specify up to 60 months (5 years) for longer trends
 
     Returns:
         CrimeAnalysis object with complete analysis, or None if error
@@ -508,7 +509,8 @@ def main():
         print(f"{'#' * 80}\n")
 
         try:
-            analysis = analyze_crime_near_address(address, radius_miles=0.5, months_back=60)
+            # Test with default: 12 months (1 year)
+            analysis = analyze_crime_near_address(address, radius_miles=0.5, months_back=12)
 
             if analysis:
                 report = format_analysis_report(analysis)

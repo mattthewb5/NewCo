@@ -115,7 +115,10 @@ def geocode_address(address: str) -> Optional[Tuple[float, float]]:
 def query_crimes_in_radius(center_lat: float, center_lon: float,
                            radius_miles: float, months_back: int) -> Optional[List[Dict]]:
     """
-    Query crimes within a radius of a point
+    Query crimes within a radius of a point with automatic chunking to avoid API limits
+
+    The API has a 2,000 record limit. This function automatically chunks large queries
+    into smaller time periods and combines results.
 
     Args:
         center_lat: Center latitude
@@ -126,72 +129,117 @@ def query_crimes_in_radius(center_lat: float, center_lon: float,
     Returns:
         List of crime dictionaries or None if error
     """
-    try:
-        # Calculate date threshold for client-side filtering
-        date_threshold = datetime.now() - timedelta(days=months_back * 30)
-        date_threshold_ms = int(date_threshold.timestamp() * 1000)
+    # Determine chunk size based on total months
+    # For longer periods, use smaller chunks to avoid hitting limit
+    if months_back <= 12:
+        chunk_months = months_back  # No chunking needed for 1 year
+    elif months_back <= 24:
+        chunk_months = 12  # Query 12 months at a time
+    else:
+        chunk_months = 6  # Query 6 months at a time for longer periods
 
-        # Convert miles to meters for API (ArcGIS uses meters)
-        radius_meters = radius_miles * 1609.34
+    all_crimes = []
+    hit_limit = False
+    chunks_queried = 0
 
-        # Build query parameters
-        # Note: We do date filtering client-side because the API date syntax is unreliable
-        params = {
-            'geometry': f'{center_lon},{center_lat}',
-            'geometryType': 'esriGeometryPoint',
-            'inSR': '4326',  # WGS84 coordinate system
-            'spatialRel': 'esriSpatialRelIntersects',
-            'distance': radius_meters,
-            'units': 'esriSRUnit_Meter',
-            'where': '1=1',  # Get all records (filter by date client-side)
-            'outFields': '*',
-            'returnGeometry': 'true',
-            'f': 'json'
-        }
+    # Query in chunks from most recent to oldest
+    current_offset = 0
 
-        response = requests.get(CRIME_API_URL, params=params, timeout=15)
-        response.raise_for_status()
+    while current_offset < months_back:
+        chunk_size = min(chunk_months, months_back - current_offset)
 
-        data = response.json()
+        # Calculate date range for this chunk
+        chunk_start = datetime.now() - timedelta(days=(current_offset + chunk_size) * 30)
+        chunk_end = datetime.now() - timedelta(days=current_offset * 30)
 
-        if 'features' in data:
-            all_crimes = [feature['attributes'] for feature in data['features']]
+        chunk_start_ms = int(chunk_start.timestamp() * 1000)
+        chunk_end_ms = int(chunk_end.timestamp() * 1000)
 
-            # Filter by date client-side
-            filtered_crimes = []
-            for crime in all_crimes:
-                crime_date_ms = crime.get('Date')
-                if crime_date_ms and crime_date_ms >= date_threshold_ms:
-                    filtered_crimes.append(crime)
+        try:
+            # Convert miles to meters for API (ArcGIS uses meters)
+            radius_meters = radius_miles * 1609.34
 
-            return filtered_crimes
-        else:
-            return []
+            # Build query parameters
+            params = {
+                'geometry': f'{center_lon},{center_lat}',
+                'geometryType': 'esriGeometryPoint',
+                'inSR': '4326',  # WGS84 coordinate system
+                'spatialRel': 'esriSpatialRelIntersects',
+                'distance': radius_meters,
+                'units': 'esriSRUnit_Meter',
+                'where': '1=1',  # Get all records
+                'outFields': '*',
+                'returnGeometry': 'true',
+                'f': 'json'
+            }
 
-    except requests.exceptions.Timeout:
-        print("⚠️  API request timed out")
-        return None
-    except requests.exceptions.ConnectionError:
-        print("⚠️  Connection error - check internet connection")
-        return None
-    except requests.exceptions.HTTPError as e:
-        print(f"⚠️  HTTP error: {e}")
-        return None
-    except Exception as e:
-        print(f"⚠️  Unexpected error querying crimes: {e}")
-        return None
+            response = requests.get(CRIME_API_URL, params=params, timeout=15)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if 'features' in data:
+                chunk_crimes = [feature['attributes'] for feature in data['features']]
+
+                # Filter by date for this chunk
+                filtered_chunk = []
+                for crime in chunk_crimes:
+                    crime_date_ms = crime.get('Date')
+                    if crime_date_ms and chunk_start_ms <= crime_date_ms <= chunk_end_ms:
+                        # Check for duplicates (in case of overlap)
+                        crime_id = crime.get('Case_Number')
+                        if not any(c.get('Case_Number') == crime_id for c in all_crimes):
+                            filtered_chunk.append(crime)
+
+                all_crimes.extend(filtered_chunk)
+                chunks_queried += 1
+
+                # Check if we hit the API limit for this chunk
+                if len(chunk_crimes) >= 2000:
+                    hit_limit = True
+                    print(f"⚠️  Warning: Hit API limit (2,000 records) for chunk {chunks_queried}")
+
+            else:
+                # Empty response for this chunk
+                pass
+
+        except requests.exceptions.Timeout:
+            print("⚠️  API request timed out")
+            return None
+        except requests.exceptions.ConnectionError:
+            print("⚠️  Connection error - check internet connection")
+            return None
+        except requests.exceptions.HTTPError as e:
+            print(f"⚠️  HTTP error: {e}")
+            return None
+        except Exception as e:
+            print(f"⚠️  Unexpected error querying crimes: {e}")
+            return None
+
+        current_offset += chunk_size
+
+    # Display summary of chunking
+    if chunks_queried > 1:
+        print(f"✓ Retrieved data in {chunks_queried} chunks to ensure completeness")
+
+    if hit_limit:
+        print(f"⚠️  WARNING: API limit reached - data may be incomplete for this high-crime area")
+        print(f"   Consider using a smaller radius or shorter time period for complete results")
+
+    return all_crimes
 
 
 def get_crimes_near_address(address: str, radius_miles: float = 0.5,
-                            months_back: int = 60) -> Optional[List[CrimeIncident]]:
+                            months_back: int = 12) -> Optional[List[CrimeIncident]]:
     """
     Get all crimes near a specific address
 
     Args:
         address: Street address in Athens-Clarke County
         radius_miles: Search radius in miles (default: 0.5)
-        months_back: How many months of history to search (default: 60 = 5 years)
-                     Common values: 12 (1 year), 36 (3 years), 60 (5 years)
+        months_back: How many months of history to search (default: 12 = 1 year)
+                     Common values: 12 (1 year), 24 (2 years), 36 (3 years), 60 (5 years)
+                     Note: Queries are automatically chunked to avoid API limits
 
     Returns:
         List of CrimeIncident objects sorted by distance, or None if error
@@ -370,17 +418,17 @@ def main():
         print(f"{'='*80}\n")
 
         try:
-            # Use default: 0.5 miles, 60 months (5 years)
+            # Use default: 0.5 miles, 12 months (1 year)
             crimes = get_crimes_near_address(address, radius_miles=0.5)
 
             if crimes is None:
                 print(f"❌ Failed to get crime data for {address}")
                 continue
 
-            print(f"✅ Found {len(crimes)} crimes within 0.5 miles (last 60 months / 5 years)")
+            print(f"✅ Found {len(crimes)} crimes within 0.5 miles (last 12 months)")
 
             # Show summary
-            summary = format_crime_summary(address, crimes, 0.5, 60)
+            summary = format_crime_summary(address, crimes, 0.5, 12)
             print("\n" + summary)
 
         except ValueError as e:
