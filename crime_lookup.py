@@ -183,14 +183,15 @@ def query_crimes_in_radius(center_lat: float, center_lon: float,
 
 
 def get_crimes_near_address(address: str, radius_miles: float = 0.5,
-                            months_back: int = 12) -> Optional[List[CrimeIncident]]:
+                            months_back: int = 60) -> Optional[List[CrimeIncident]]:
     """
     Get all crimes near a specific address
 
     Args:
         address: Street address in Athens-Clarke County
         radius_miles: Search radius in miles (default: 0.5)
-        months_back: How many months of history to search (default: 12)
+        months_back: How many months of history to search (default: 60 = 5 years)
+                     Common values: 12 (1 year), 36 (3 years), 60 (5 years)
 
     Returns:
         List of CrimeIncident objects sorted by distance, or None if error
@@ -369,16 +370,17 @@ def main():
         print(f"{'='*80}\n")
 
         try:
-            crimes = get_crimes_near_address(address, radius_miles=0.5, months_back=12)
+            # Use default: 0.5 miles, 60 months (5 years)
+            crimes = get_crimes_near_address(address, radius_miles=0.5)
 
             if crimes is None:
                 print(f"❌ Failed to get crime data for {address}")
                 continue
 
-            print(f"✅ Found {len(crimes)} crimes within 0.5 miles (last 12 months)")
+            print(f"✅ Found {len(crimes)} crimes within 0.5 miles (last 60 months / 5 years)")
 
             # Show summary
-            summary = format_crime_summary(address, crimes, 0.5, 12)
+            summary = format_crime_summary(address, crimes, 0.5, 60)
             print("\n" + summary)
 
         except ValueError as e:
