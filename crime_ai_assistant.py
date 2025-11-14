@@ -38,16 +38,24 @@ class CrimeAIAssistant:
         Returns:
             Formatted string with all crime data
         """
+        from datetime import datetime, timedelta
+
         stats = analysis.statistics
         trends = analysis.trends
         safety = analysis.safety_score
+
+        # Calculate date range
+        today = datetime.now()
+        start_date = today - timedelta(days=analysis.time_period_months * 30)
+        date_range = f"{start_date.strftime('%B %Y')} to {today.strftime('%B %Y')}"
 
         lines = []
 
         # Address and search parameters
         lines.append(f"ADDRESS: {analysis.address}")
         lines.append(f"Search Radius: {analysis.radius_miles} miles")
-        lines.append(f"Time Period: {analysis.time_period_months} months")
+        lines.append(f"Time Period: {analysis.time_period_months} months ({date_range})")
+        lines.append(f"Data Retrieved: {today.strftime('%B %d, %Y')}")
         lines.append("")
 
         # Overall statistics
@@ -106,17 +114,21 @@ class CrimeAIAssistant:
         lines.append("")
 
         # Data sources and limitations
-        lines.append("DATA SOURCES:")
-        lines.append(f"- Source: Athens-Clarke County Police Department via ArcGIS REST API")
-        lines.append(f"- Time Period: Last {analysis.time_period_months} months of reported crimes")
+        lines.append("DATA SOURCES AND CITATION INFORMATION:")
+        lines.append(f"- Source: Athens-Clarke County Police Department")
+        lines.append(f"- Access Method: ArcGIS REST API")
+        lines.append(f"- Crime Map: https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime")
+        lines.append(f"- Date Range: {date_range}")
         lines.append(f"- Search Area: Within {analysis.radius_miles} miles of the address")
+        lines.append(f"- Data Current As Of: {today.strftime('%B %d, %Y')}")
         lines.append("")
 
-        lines.append("DATA LIMITATIONS:")
+        lines.append("IMPORTANT DATA LIMITATIONS:")
         lines.append("- Shows only REPORTED crimes that appear in public police data")
         lines.append("- Does not include all crimes (some may be unreported or excluded for privacy)")
         lines.append("- Crime locations may be approximate for privacy protection")
         lines.append("- Past crime data does not predict future crime")
+        lines.append("- Crime statistics should be considered alongside other factors when evaluating a property")
 
         return "\n".join(lines)
 
@@ -157,15 +169,34 @@ class CrimeAIAssistant:
 
 CRITICAL INSTRUCTIONS FOR ACCURATE AND BALANCED RESPONSES:
 
-1. ANSWER BASED ONLY ON PROVIDED DATA:
-   - Use only the crime statistics provided below
-   - Do NOT speculate or make up information
-   - If the data doesn't answer the question, say so
+1. REQUIRED RESPONSE FORMAT - Use this exact structure:
 
-2. ALWAYS CITE SPECIFIC STATISTICS:
-   - Use exact numbers (e.g., "15 property crimes in the last 12 months")
-   - Reference percentages (e.g., "17.2% of crimes were violent")
-   - Quote the crime trend (e.g., "crime decreased by 37.7%")
+   SECTION 1: BRIEF ANSWER (2-3 sentences)
+   - Start with a clear, direct answer to the question
+   - Begin with "According to Athens-Clarke County Police data from [date range], within [radius] miles of this address..."
+   - Be balanced - acknowledge both positive and negative aspects
+
+   SECTION 2: SUPPORTING STATISTICS (bulleted list)
+   - Cite specific numbers and percentages
+   - Include total crimes, crimes per month, category breakdown
+   - Reference the safety score (X out of 5)
+
+   SECTION 3: TREND INFORMATION (if relevant to the question)
+   - State whether crime is increasing, decreasing, or stable
+   - Include the specific percentage change
+   - Mention the comparison period (last 6 months vs. previous 6 months)
+
+   SECTION 4: DATA SOURCE AND LIMITATIONS
+   - Include: "Data current as of [today's date]"
+   - Include: "View the crime map: https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime"
+   - Include: "This data reflects reported crimes only; not all crimes are reported"
+   - Include: "Crime statistics should be considered alongside other factors when evaluating a property"
+
+2. CITATION REQUIREMENTS:
+   - ALWAYS start with "According to Athens-Clarke County Police data from [date range]..."
+   - ALWAYS specify "within [X] miles of the address"
+   - Use exact numbers (e.g., "448 reported crimes", "17.2% were violent")
+   - Reference the specific data source in Section 4
 
 3. BE BALANCED AND FACT-BASED:
    - Do NOT exaggerate danger or use fear-mongering language
@@ -173,29 +204,22 @@ CRITICAL INSTRUCTIONS FOR ACCURATE AND BALANCED RESPONSES:
    - Present facts objectively and let the user decide
    - Acknowledge both positive and negative aspects
 
-4. NOTE DATA LIMITATIONS:
-   - Always mention "based on the last X months of reported crimes"
-   - Note that this shows only reported crimes, not all crimes
-   - Remind users that past crime doesn't predict future crime
-   - Suggest visiting the neighborhood in person
+4. SPECIAL CASE - NO CRIMES FOUND:
+   - Say: "I found no reported crimes within [X] miles in the last [Y] months"
+   - Do NOT say "This is the safest place" or make speculation
+   - Note: "However, this only reflects reported crimes in public police data"
 
-5. PROVIDE CONTEXT:
-   - Compare violent vs. property crime percentages
-   - Note crime trends (increasing, decreasing, stable)
-   - Mention the safety score and what it means
-   - Reference the most common crime types
+5. DO NOT SPECULATE:
+   - Use only the crime statistics provided
+   - If the data doesn't answer the question, say so
+   - Never make predictions about future crime
+   - Never compare to other cities unless data is provided
 
-6. IF ASKED FOR RECOMMENDATIONS:
-   - Focus on facts, not opinions
-   - Suggest additional research (visit neighborhood, talk to residents)
-   - Mention that crime is just one factor in choosing a home
-   - Recommend checking with Athens-Clarke County Police for more info
-
-7. BE HELPFUL AND PROFESSIONAL:
+6. BE HELPFUL AND PROFESSIONAL:
    - Answer the specific question asked
-   - Provide relevant details without overwhelming the user
    - Use clear, accessible language
-   - Show empathy for home buyers' legitimate concerns"""
+   - Show empathy for home buyers' legitimate concerns
+   - Suggest visiting the neighborhood in person"""
 
         # Create user prompt
         user_prompt = f"""Please answer this question about crime and safety for a property in Athens-Clarke County, Georgia.
@@ -205,13 +229,30 @@ QUESTION: {question}
 CRIME DATA:
 {crime_data}
 
-Please provide a clear, balanced, fact-based answer that:
-1. Cites specific statistics from the data above
-2. Notes that this is based on the last {months_back} months of reported crimes
-3. Acknowledges both positive and negative aspects
-4. Helps the user make an informed decision
+REQUIRED FORMAT FOR YOUR RESPONSE:
 
-Remember: Be helpful, honest, and balanced. Don't exaggerate or minimize concerns."""
+SECTION 1: BRIEF ANSWER (2-3 sentences)
+Start with: "According to Athens-Clarke County Police data from [date range], within {radius_miles} miles of this address..."
+Provide a balanced, direct answer to the question.
+
+SECTION 2: SUPPORTING STATISTICS
+Use bullet points to cite specific numbers:
+• Total crimes and crimes per month
+• Category breakdown (violent %, property %, etc.)
+• Safety score (X out of 5)
+• Most common crime types
+
+SECTION 3: TREND INFORMATION
+State whether crime is increasing, decreasing, or stable, with the percentage change.
+
+SECTION 4: DATA SOURCE AND LIMITATIONS
+Include ALL of these:
+• "Data current as of [today's date from the data above]"
+• "View the crime map: https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime"
+• "This data reflects reported crimes only; not all crimes are reported"
+• "Crime statistics should be considered alongside other factors when evaluating a property"
+
+Remember: Be helpful, honest, and balanced. Don't exaggerate or minimize concerns. Follow the format exactly."""
 
         # Call Claude API
         print(f"🤖 Asking Claude AI to analyze the question...")
