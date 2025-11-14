@@ -24,7 +24,7 @@ HALF_MILE_CIRCLE_SQ_MILES = 3.14159 * 0.5 * 0.5  # π * r²
 
 # Cache file location
 CACHE_FILE = "/tmp/athens_crime_baseline_cache.json"
-CACHE_EXPIRY_HOURS = 24  # Recalculate daily
+CACHE_EXPIRY_HOURS = 168  # Recalculate weekly (7 days)
 
 
 @dataclass

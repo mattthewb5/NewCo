@@ -9,6 +9,9 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import math
+import os
+import json
+import hashlib
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
@@ -23,6 +26,10 @@ ATHENS_BOUNDS = {
     'lon_min': -83.50,
     'lon_max': -83.25
 }
+
+# Cache configuration for address queries
+QUERY_CACHE_DIR = "/tmp/athens_crime_query_cache"
+QUERY_CACHE_EXPIRY_HOURS = 24  # Refresh daily (crime data doesn't change hourly)
 
 
 @dataclass
@@ -110,6 +117,99 @@ def geocode_address(address: str) -> Optional[Tuple[float, float]]:
     except Exception as e:
         print(f"⚠️  Unexpected geocoding error: {e}")
         return None
+
+
+def _generate_cache_key(address: str, radius_miles: float, months_back: int) -> str:
+    """
+    Generate a unique cache key for an address query
+
+    Args:
+        address: Normalized address string
+        radius_miles: Search radius
+        months_back: Time period
+
+    Returns:
+        MD5 hash to use as cache filename
+    """
+    # Normalize address for consistent caching
+    normalized = address.lower().strip()
+    cache_string = f"{normalized}|{radius_miles}|{months_back}"
+    return hashlib.md5(cache_string.encode()).hexdigest()
+
+
+def _load_cached_query(cache_key: str) -> Optional[Tuple[List[Dict], Optional[Tuple[float, float]]]]:
+    """
+    Load cached crime query results if available and not expired
+
+    Args:
+        cache_key: Cache key generated from query parameters
+
+    Returns:
+        Tuple of (crimes, coords) or None if cache invalid/expired
+        coords may be None for older caches without geocoding data
+    """
+    # Ensure cache directory exists
+    if not os.path.exists(QUERY_CACHE_DIR):
+        return None
+
+    cache_file = os.path.join(QUERY_CACHE_DIR, f"{cache_key}.json")
+
+    if not os.path.exists(cache_file):
+        return None
+
+    try:
+        with open(cache_file, 'r') as f:
+            cache_data = json.load(f)
+
+        # Check expiry
+        cached_time = datetime.fromisoformat(cache_data['cached_at'])
+        age_hours = (datetime.now() - cached_time).total_seconds() / 3600
+
+        if age_hours > QUERY_CACHE_EXPIRY_HOURS:
+            # Cache expired
+            return None
+
+        print(f"✓ Using cached query results (age: {age_hours:.1f} hours)")
+
+        crimes = cache_data['crimes']
+        coords = cache_data.get('coords')  # May be None for older caches
+        if coords:
+            coords = tuple(coords)  # Convert list back to tuple
+
+        return (crimes, coords)
+
+    except Exception as e:
+        # Cache corrupted, ignore
+        return None
+
+
+def _save_cached_query(cache_key: str, crimes: List[Dict], coords: Optional[Tuple[float, float]] = None):
+    """
+    Save crime query results to cache
+
+    Args:
+        cache_key: Cache key generated from query parameters
+        crimes: List of crime data dicts to cache
+        coords: Optional tuple of (lat, lon) to cache geocoding result
+    """
+    try:
+        # Create cache directory if needed
+        os.makedirs(QUERY_CACHE_DIR, exist_ok=True)
+
+        cache_file = os.path.join(QUERY_CACHE_DIR, f"{cache_key}.json")
+
+        cache_data = {
+            'cached_at': datetime.now().isoformat(),
+            'crimes': crimes,
+            'coords': coords  # Cache geocoding result too
+        }
+
+        with open(cache_file, 'w') as f:
+            json.dump(cache_data, f)
+
+    except Exception as e:
+        # Cache save failed, not critical
+        pass
 
 
 def query_crimes_in_radius(center_lat: float, center_lon: float,
@@ -257,28 +357,61 @@ def get_crimes_near_address(address: str, radius_miles: float = 0.5,
     if months_back <= 0 or months_back > 120:
         raise ValueError("months_back must be between 1 and 120 months")
 
-    # Geocode the address
-    print(f"🔍 Geocoding address: {address}")
-    coords = geocode_address(address)
+    # Generate cache key for this query
+    cache_key = _generate_cache_key(address, radius_miles, months_back)
 
-    if not coords:
-        raise ValueError(
-            f"Could not geocode address: {address}\n"
-            "Please check:\n"
-            "  - Address is in Athens-Clarke County, GA\n"
-            "  - Street name is spelled correctly\n"
-            "  - Street number is valid"
-        )
+    # Try to load from cache first
+    cached_result = _load_cached_query(cache_key)
 
-    center_lat, center_lon = coords
-    print(f"✓ Geocoded to: {center_lat:.6f}, {center_lon:.6f}")
+    if cached_result is not None:
+        # Cache hit - use cached data
+        crime_data, cached_coords = cached_result
 
-    # Query crimes in radius
-    print(f"🔍 Searching for crimes within {radius_miles} miles (last {months_back} months)...")
-    crime_data = query_crimes_in_radius(center_lat, center_lon, radius_miles, months_back)
+        if cached_coords:
+            # We have cached coordinates - no need to geocode again
+            center_lat, center_lon = cached_coords
+        else:
+            # Old cache without coords - geocode now
+            print(f"🔍 Geocoding address: {address}")
+            coords = geocode_address(address)
+            if not coords:
+                raise ValueError(
+                    f"Could not geocode address: {address}\n"
+                    "Please check:\n"
+                    "  - Address is in Athens-Clarke County, GA\n"
+                    "  - Street name is spelled correctly\n"
+                    "  - Street number is valid"
+                )
+            center_lat, center_lon = coords
+            print(f"✓ Geocoded to: {center_lat:.6f}, {center_lon:.6f}")
+    else:
+        # Cache miss - do full query
+        # Geocode the address
+        print(f"🔍 Geocoding address: {address}")
+        coords = geocode_address(address)
 
-    if crime_data is None:
-        raise RuntimeError("Failed to query crime data - API error")
+        if not coords:
+            raise ValueError(
+                f"Could not geocode address: {address}\n"
+                "Please check:\n"
+                "  - Address is in Athens-Clarke County, GA\n"
+                "  - Street name is spelled correctly\n"
+                "  - Street number is valid"
+            )
+
+        center_lat, center_lon = coords
+        print(f"✓ Geocoded to: {center_lat:.6f}, {center_lon:.6f}")
+
+        # Query crimes in radius
+        print(f"🔍 Searching for crimes within {radius_miles} miles (last {months_back} months)...")
+        crime_data = query_crimes_in_radius(center_lat, center_lon, radius_miles, months_back)
+
+        if crime_data is None:
+            raise RuntimeError("Failed to query crime data - API error")
+
+        # Save to cache for future queries (including coords for faster subsequent lookups)
+        if crime_data:
+            _save_cached_query(cache_key, crime_data, coords=(center_lat, center_lon))
 
     if not crime_data:
         # No crimes found - return empty list (not an error)
