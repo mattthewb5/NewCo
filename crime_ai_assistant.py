@@ -106,6 +106,17 @@ class CrimeAIAssistant:
         lines.append(f"- Trend: {trends.trend_description}")
         lines.append("")
 
+        # Comparison to Athens average
+        if analysis.comparison:
+            comp = analysis.comparison
+            lines.append("COMPARISON TO ATHENS-CLARKE COUNTY AVERAGE:")
+            lines.append(f"- This Area: {comp.area_crime_count} crimes")
+            lines.append(f"- Athens Average: {comp.athens_average:.1f} crimes (within {analysis.radius_miles} miles)")
+            lines.append(f"- Difference: {comp.difference_count:+.1f} crimes ({comp.difference_percentage:+.0f}%)")
+            lines.append(f"- Assessment: {comp.relative_ranking}")
+            lines.append(f"- Summary: {comp.comparison_text}")
+            lines.append("")
+
         # Safety score
         lines.append("SAFETY SCORE:")
         lines.append(f"- Score: {safety.score} out of 5 (5 = safest)")
@@ -239,11 +250,13 @@ SECTION 2: SUPPORTING STATISTICS
 Use bullet points to cite specific numbers:
 • Total crimes and crimes per month
 • Category breakdown (violent %, property %, etc.)
+• Comparison to Athens average (if provided in data - e.g., "X% more/less than Athens average")
 • Safety score (X out of 5)
 • Most common crime types
 
 SECTION 3: TREND INFORMATION
 State whether crime is increasing, decreasing, or stable, with the percentage change.
+If comparison to Athens average is provided, mention whether this is a high or low activity area.
 
 SECTION 4: DATA SOURCE AND LIMITATIONS
 Include ALL of these:

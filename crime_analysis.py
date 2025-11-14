@@ -104,6 +104,17 @@ class SafetyScore:
 
 
 @dataclass
+class ComparisonData:
+    """Comparison to Athens-Clarke County average"""
+    area_crime_count: int
+    athens_average: float
+    difference_count: float
+    difference_percentage: float
+    comparison_text: str  # "X% more/less than Athens average"
+    relative_ranking: str  # "High activity area", "Above average", "Below average", "Low activity area"
+
+
+@dataclass
 class CrimeAnalysis:
     """Complete crime analysis for a location"""
     address: str
@@ -114,6 +125,7 @@ class CrimeAnalysis:
     trends: TrendAnalysis
     safety_score: SafetyScore
     category_breakdown: Dict[str, List[CrimeIncident]]
+    comparison: Optional[ComparisonData] = None
 
 
 def categorize_crime(crime_type: str) -> str:
@@ -376,6 +388,63 @@ def analyze_crime_near_address(address: str, radius_miles: float = 0.5,
         category = categorize_crime(crime.crime_type)
         category_breakdown[category].append(crime)
 
+    # Calculate comparison to Athens average
+    comparison = None
+    try:
+        from athens_baseline import get_athens_crime_baseline
+
+        baseline = get_athens_crime_baseline(months_back=months_back)
+        if baseline:
+            area_count = statistics.total_crimes
+            athens_avg = baseline.crimes_per_half_mile_circle
+
+            # Adjust average if radius is different from 0.5 miles
+            if radius_miles != 0.5:
+                # Scale by area: (r1/r2)^2
+                scale_factor = (radius_miles / 0.5) ** 2
+                athens_avg = athens_avg * scale_factor
+
+            difference = area_count - athens_avg
+            if athens_avg > 0:
+                diff_pct = round((difference / athens_avg) * 100, 1)
+            else:
+                diff_pct = 0.0
+
+            # Generate comparison text
+            if diff_pct > 0:
+                comparison_text = f"{abs(diff_pct):.0f}% more crime than Athens average"
+            elif diff_pct < 0:
+                comparison_text = f"{abs(diff_pct):.0f}% less crime than Athens average"
+            else:
+                comparison_text = "Similar to Athens average"
+
+            # Determine relative ranking
+            if diff_pct >= 150:
+                ranking = "Very high activity area"
+            elif diff_pct >= 50:
+                ranking = "High activity area"
+            elif diff_pct >= 10:
+                ranking = "Above average"
+            elif diff_pct >= -10:
+                ranking = "Average"
+            elif diff_pct >= -40:
+                ranking = "Below average"
+            else:
+                ranking = "Low activity area"
+
+            comparison = ComparisonData(
+                area_crime_count=area_count,
+                athens_average=round(athens_avg, 1),
+                difference_count=round(difference, 1),
+                difference_percentage=diff_pct,
+                comparison_text=comparison_text,
+                relative_ranking=ranking
+            )
+
+    except Exception as e:
+        print(f"⚠️  Could not calculate comparison: {e}")
+        comparison = None
+
     return CrimeAnalysis(
         address=address,
         radius_miles=radius_miles,
@@ -384,7 +453,8 @@ def analyze_crime_near_address(address: str, radius_miles: float = 0.5,
         statistics=statistics,
         trends=trends,
         safety_score=safety_score,
-        category_breakdown=category_breakdown
+        category_breakdown=category_breakdown,
+        comparison=comparison
     )
 
 
@@ -435,6 +505,19 @@ def format_analysis_report(analysis: CrimeAnalysis) -> str:
     lines.append(f"  🟡 Traffic Offenses: {stats.traffic_count:4d} ({stats.traffic_percentage:5.1f}%)")
     lines.append(f"  🟢 Other:            {stats.other_count:4d} ({stats.other_percentage:5.1f}%)")
     lines.append("")
+
+    # Comparison to Athens Average
+    if analysis.comparison:
+        lines.append("=" * 80)
+        lines.append("COMPARISON TO ATHENS-CLARKE COUNTY AVERAGE")
+        lines.append("=" * 80)
+        comp = analysis.comparison
+        lines.append(f"This Area:      {comp.area_crime_count} crimes")
+        lines.append(f"Athens Average: {comp.athens_average:.1f} crimes (for {analysis.radius_miles}-mile radius)")
+        lines.append(f"Difference:     {comp.difference_count:+.1f} crimes ({comp.difference_percentage:+.0f}%)")
+        lines.append(f"Assessment:     {comp.relative_ranking}")
+        lines.append(f"                ({comp.comparison_text})")
+        lines.append("")
 
     # Trend Analysis
     lines.append("=" * 80)
