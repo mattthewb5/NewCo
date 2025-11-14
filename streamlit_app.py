@@ -127,6 +127,136 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# About the Data - Expandable Information Section
+with st.expander("📖 About the Data - Sources, Updates & Limitations"):
+    st.markdown("""
+    ### 📚 Data Sources
+
+    This tool combines data from three official sources:
+
+    **School Information:**
+    - **School Assignments**: Clarke County School District Official Street Index (2024-25 school year)
+    - **School Performance**: Georgia Governor's Office of Student Achievement (GOSA) - 2023-24 data
+    - **Metrics**: CCRPI scores, Content Mastery, Literacy/Math proficiency, Graduation rates
+    - **Verify**: [clarke.k12.ga.us/page/school-attendance-zones](https://www.clarke.k12.ga.us/page/school-attendance-zones)
+
+    **Crime & Safety Information:**
+    - **Source**: Athens-Clarke County Police Department Official Database
+    - **Coverage**: Last 12 months of reported incidents
+    - **Search Radius**: 0.5 miles from address (configurable)
+    - **Categories**: Violent, Property, Traffic, and Other offenses
+    - **Verify**: [Athens-Clarke Crime Map](https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime)
+
+    ---
+
+    ### 🔄 Update Frequency
+
+    - **School Assignments**: Updated annually (current: 2024-25 school year)
+    - **School Performance**: Updated annually after state assessment (current: 2023-24 data)
+    - **Crime Data**:
+      - Individual address queries: Cached for 24 hours
+      - Athens baseline comparison: Refreshed weekly
+      - Source database: Updated regularly by Athens-Clarke PD
+    - **AI Analysis**: Generated in real-time using Claude 3 Haiku
+
+    ---
+
+    ### ⚠️ Important Limitations
+
+    **What This Tool DOES Provide:**
+    - ✓ School assignments for a specific address
+    - ✓ School performance metrics from official state data
+    - ✓ Crime statistics within a radius of the address
+    - ✓ Safety trends and comparisons to Athens average
+    - ✓ AI-synthesized insights combining schools and safety
+
+    **What This Tool DOES NOT Provide:**
+    - ✗ Home prices or property values
+    - ✗ Traffic patterns or commute times
+    - ✗ Parks, recreation, or walkability scores
+    - ✗ Restaurants, shopping, or amenities
+    - ✗ Future development plans
+    - ✗ Community "feel" or culture
+    - ✗ Unreported crimes or private security incidents
+    - ✗ Crimes on UGA campus (separate jurisdiction)
+
+    **Always Remember:**
+    - This is for **research purposes only**
+    - School zones can change - verify with the district
+    - Crime patterns evolve - data is historical
+    - Visit neighborhoods in person
+    - Talk to local residents and realtors
+    - Consider your specific needs and priorities
+
+    ---
+
+    ### 🎯 How the Safety Score Works
+
+    The 1-100 safety score is calculated using a transparent algorithm:
+
+    1. **Start at 100** (perfect score)
+    2. **Crime Density Deduction** (0 to -50 points):
+       - Based on crimes per month within 0.5 mile radius
+       - More crimes = larger deduction
+    3. **Violent Crime Percentage** (0 to -25 points):
+       - Higher percentage of violent crimes = larger deduction
+    4. **Trend Adjustment** (-15 to +5 points):
+       - Crime decreasing = bonus points
+       - Crime increasing = deduction
+    5. **Final Score**: Clipped to range [1-100]
+
+    **Score Ranges:**
+    - 80-100: Very Safe (Green)
+    - 60-79: Safe (Light Green)
+    - 40-59: Moderate (Yellow/Orange)
+    - 20-39: Concerning (Red)
+    - 1-19: High Risk (Dark Red)
+
+    This scale is designed for expansion to other U.S. cities with varying crime levels.
+
+    ---
+
+    ### 🤖 About the AI
+
+    - **Model**: Claude 3 Haiku by Anthropic
+    - **Purpose**: Synthesizes data from multiple sources and answers questions in plain English
+    - **What it does**: Combines school performance data and crime statistics to provide contextual insights
+    - **What it doesn't do**: Make up information, predict the future, or provide legal/financial advice
+    - **Citations**: All AI responses reference specific data points and sources
+
+    ---
+
+    ### 📬 Contact & Feedback
+
+    **This is a demo/research tool** built to showcase AI-powered neighborhood research capabilities.
+
+    - **Not affiliated with**: Clarke County School District, Georgia Department of Education, or Athens-Clarke County Government
+    - **Data accuracy**: We strive for accuracy but cannot guarantee completeness - always verify independently
+    - **Questions about school zones**: Contact Clarke County Schools directly
+    - **Questions about crime data**: Contact Athens-Clarke County Police Department
+    - **Technical questions or feedback about this tool**: Submit issues at the project repository
+
+    ---
+
+    ### 🛡️ Privacy & Usage
+
+    - **No data collection**: We do not store your queries or search history
+    - **No personal information**: No login or personal data required
+    - **Public data only**: All information comes from publicly available sources
+    - **API usage**: Queries are sent to Anthropic's Claude API for analysis (see their privacy policy)
+
+    **Ethical Use:**
+    This tool should be used to help people make informed decisions about where to live. It should not be used to:
+    - Discriminate against or stigmatize neighborhoods
+    - Make decisions solely based on historical crime data without context
+    - Replace professional advice (real estate, legal, financial)
+    - Spread misinformation or unsupported claims
+
+    ---
+
+    **Last Updated**: November 2024 | **Geographic Coverage**: Athens-Clarke County, Georgia only
+    """)
+
 # Check for API key
 api_key = os.environ.get('ANTHROPIC_API_KEY')
 
@@ -218,11 +348,11 @@ with st.expander("💡 Example Questions"):
 # Process search
 if search_button:
     if not address_input or not address_input.strip():
-        st.warning("⚠️ Please enter an address")
+        st.warning("⚠️ **Please enter an address**\n\nTry one of these Athens addresses:\n- 150 Hancock Avenue, Athens, GA 30601\n- 220 College Station Road, Athens, GA 30602\n- 1000 Jennings Mill Road, Athens, GA 30606")
     elif not question_input or not question_input.strip():
-        st.warning("⚠️ Please enter a question")
+        st.warning("⚠️ **Please enter a question**\n\nExample questions:\n- Is this a good area for families?\n- How safe is this neighborhood?\n- What are the schools like here?")
     elif not include_schools and not include_crime:
-        st.warning("⚠️ Please select at least one analysis type (Schools or Crime/Safety)")
+        st.warning("⚠️ **Please select at least one analysis type**\n\nCheck the box for:\n- 🎓 School Information (for school assignments and performance)\n- 🛡️ Crime & Safety Analysis (for crime statistics and trends)\n- Or both for a comprehensive analysis!")
     else:
         # Add Athens, GA if not present
         full_address = address_input
@@ -252,7 +382,78 @@ if search_button:
                 )
 
                 if result['error']:
-                    st.error(f"❌ {result['error']}")
+                    error_msg = result['error']
+
+                    # Provide helpful error messages based on error type
+                    if "outside" in error_msg.lower() or "not in athens" in error_msg.lower():
+                        st.error("""
+                        🌍 **Address Outside Athens-Clarke County**
+
+                        This tool currently only works for addresses within Athens-Clarke County, Georgia.
+
+                        **What you can do:**
+                        - Try a different address within Athens city limits
+                        - Check if you spelled the street name correctly
+                        - Make sure you're not searching in Watkinsville, Bogart, or other nearby towns
+
+                        **Sample Athens addresses to try:**
+                        - 150 Hancock Avenue, Athens, GA 30601 (downtown)
+                        - 220 College Station Road, Athens, GA 30602 (suburban)
+                        - 1000 Jennings Mill Road, Athens, GA 30606 (southeast)
+                        """)
+                    elif "not found" in error_msg.lower() or "geocod" in error_msg.lower():
+                        st.error("""
+                        📍 **Address Not Found**
+
+                        We couldn't locate that address. This might happen if:
+                        - The address has a typo or misspelling
+                        - It's a very new address not yet in mapping databases
+                        - The street name format is unusual
+
+                        **What you can do:**
+                        - Double-check the spelling of the street name
+                        - Try using the full format: "123 Main Street, Athens, GA 30601"
+                        - Verify the address exists on Google Maps first
+                        - Try a nearby address on the same street
+                        """)
+                    elif "school" in error_msg.lower():
+                        st.error(f"""
+                        🎓 **School Data Issue**
+
+                        {error_msg}
+
+                        **What you can do:**
+                        - The address might be outside Athens-Clarke County school district
+                        - School zone data is from 2024-25 - new construction may not be included yet
+                        - Try unchecking "School Information" and searching with just Crime/Safety data
+                        - Contact Clarke County Schools directly at (706) 546-7721 for official zone information
+                        """)
+                    elif "crime" in error_msg.lower() or "api" in error_msg.lower():
+                        st.error(f"""
+                        🛡️ **Crime Data Issue**
+
+                        {error_msg}
+
+                        **What you can do:**
+                        - The crime database might be temporarily unavailable
+                        - Try again in a few moments
+                        - Try unchecking "Crime & Safety Analysis" and searching with just School Information
+                        - You can view the Athens crime map directly: [Athens-Clarke Crime Map](https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime)
+                        """)
+                    else:
+                        st.error(f"""
+                        ❌ **Something Went Wrong**
+
+                        {error_msg}
+
+                        **What you can do:**
+                        - Check that your address is within Athens-Clarke County, GA
+                        - Try a different address format
+                        - Verify the address exists on Google Maps
+                        - If the problem persists, try one of our demo addresses:
+                          - 150 Hancock Avenue, Athens, GA 30601
+                          - 220 College Station Road, Athens, GA 30602
+                        """)
 
                 # Display results
                 st.success(f"✓ Analysis Complete: {full_address}")
@@ -404,9 +605,26 @@ if search_button:
                         st.text(format_analysis_report(result['crime_analysis']))
 
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
+                error_str = str(e)
+                st.error(f"""
+                ❌ **Unexpected Error**
+
+                {error_str}
+
+                **What you can do:**
+                - Verify your address is in Athens-Clarke County, GA
+                - Try a simpler address format (e.g., "150 Hancock Avenue, Athens, GA")
+                - Check if the address exists on Google Maps
+                - Try selecting only one analysis type (Schools OR Crime)
+                - Test with a known working address: 150 Hancock Avenue, Athens, GA 30601
+
+                If the problem continues, this might be a temporary system issue. Try again in a few minutes.
+                """)
+
+                # Show technical details in expander for debugging
+                with st.expander("🔧 Technical Details (for debugging)"):
+                    import traceback
+                    st.code(traceback.format_exc())
 
 # Footer
 st.markdown("""
