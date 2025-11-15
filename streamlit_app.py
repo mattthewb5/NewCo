@@ -9,6 +9,7 @@ import os
 from school_info import get_school_info, format_complete_report
 from ai_school_assistant import SchoolAIAssistant
 from crime_analysis import analyze_crime_near_address, format_analysis_report
+from zoning_lookup import format_zoning_report
 from unified_ai_assistant import UnifiedAIAssistant
 from address_extraction import extract_address_from_query
 from crime_visualizations import (
@@ -117,14 +118,14 @@ st.markdown("""
 
 # Header
 st.markdown('<h1 class="main-title">🏡 Athens Home Buyer Research Assistant</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI-powered school & safety research for Athens-Clarke County, Georgia</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">AI-powered school, safety, & zoning research for Athens-Clarke County, Georgia</p>', unsafe_allow_html=True)
 
 # Disclaimer
 st.markdown("""
 <div class="disclaimer">
-    ⚠️ <strong>Disclaimer:</strong> Data from public sources (Clarke County Schools, Georgia GOSA, Athens-Clarke Police).
+    ⚠️ <strong>Disclaimer:</strong> Data from public sources (Clarke County Schools, Georgia GOSA, Athens-Clarke Police, ACC Planning).
     Always verify important information independently and visit neighborhoods in person.
-    School zones, performance data, and crime statistics can change over time.
+    School zones, performance data, crime statistics, and zoning regulations can change over time.
 </div>
 """, unsafe_allow_html=True)
 
@@ -133,7 +134,7 @@ with st.expander("📖 About the Data - Sources, Updates & Limitations"):
     st.markdown("""
     ### 📚 Data Sources
 
-    This tool combines data from three official sources:
+    This tool combines data from four official sources:
 
     **School Information:**
     - **School Assignments**: Clarke County School District Official Street Index (2024-25 school year)
@@ -147,6 +148,13 @@ with st.expander("📖 About the Data - Sources, Updates & Limitations"):
     - **Search Radius**: 0.5 miles from address (configurable)
     - **Categories**: Violent, Property, Traffic, and Other offenses
     - **Verify**: [Athens-Clarke Crime Map](https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime)
+
+    **Zoning & Land Use Information:**
+    - **Source**: Athens-Clarke County Planning Department GIS
+    - **Data**: Current zoning codes, future land use comprehensive plan, property size
+    - **Coverage**: All parcels in Athens-Clarke County
+    - **Includes**: Nearby parcel context, split zoning detection, plan changes
+    - **Verify**: Contact Planning Department at (706) 613-3515 or visit [Athens-Clarke GIS Portal](https://enigma.accgov.com/)
 
     ---
 
@@ -221,7 +229,7 @@ with st.expander("📖 About the Data - Sources, Updates & Limitations"):
 
     - **Model**: Claude 3 Haiku by Anthropic
     - **Purpose**: Synthesizes data from multiple sources and answers questions in plain English
-    - **What it does**: Combines school performance data and crime statistics to provide contextual insights
+    - **What it does**: Combines school performance, crime statistics, and zoning data to provide contextual insights
     - **What it doesn't do**: Make up information, predict the future, or provide legal/financial advice
     - **Citations**: All AI responses reference specific data points and sources
 
@@ -233,8 +241,9 @@ with st.expander("📖 About the Data - Sources, Updates & Limitations"):
 
     - **Not affiliated with**: Clarke County School District, Georgia Department of Education, or Athens-Clarke County Government
     - **Data accuracy**: We strive for accuracy but cannot guarantee completeness - always verify independently
-    - **Questions about school zones**: Contact Clarke County Schools directly
+    - **Questions about school zones**: Contact Clarke County Schools directly at (706) 546-7721
     - **Questions about crime data**: Contact Athens-Clarke County Police Department
+    - **Questions about zoning**: Contact ACC Planning Department at (706) 613-3515
     - **Technical questions or feedback about this tool**: Submit issues at the project repository
 
     ---
@@ -290,12 +299,12 @@ user_query = st.text_area(
     placeholder="Example: Is 150 Hancock Avenue a good area for families with young kids?\n\nOr try: What are the schools like at 1398 W Hancock Ave, Athens, GA 30606?",
     height=100,
     label_visibility="collapsed",
-    help="Type your question about any property in Athens. Include the street address in your question, and I'll analyze schools and safety data for you."
+    help="Type your question about any property in Athens. Include the street address in your question, and I'll analyze schools, safety, and zoning data for you."
 )
 
 # Analysis options
 st.markdown("#### 📊 Include in Analysis:")
-col_opt1, col_opt2, col_opt3 = st.columns([1, 1, 2])
+col_opt1, col_opt2, col_opt3 = st.columns([1, 1, 1])
 
 with col_opt1:
     include_schools = st.checkbox("🎓 School Information", value=True, help="Include school assignments and performance data")
@@ -304,12 +313,21 @@ with col_opt2:
     include_crime = st.checkbox("🛡️ Crime & Safety Analysis", value=True, help="Include crime statistics and safety score")
 
 with col_opt3:
-    if include_schools and include_crime:
-        st.info("💡 AI will synthesize insights across both schools and safety")
-    elif include_schools:
-        st.info("🎓 Showing school information only")
-    elif include_crime:
-        st.info("🛡️ Showing crime/safety information only")
+    include_zoning = st.checkbox("🏗️ Zoning & Land Use", value=True, help="Include zoning classification and future land use plans")
+
+# Show info about what's being analyzed
+if include_schools and include_crime and include_zoning:
+    st.info("💡 AI will synthesize insights across schools, safety, and zoning")
+elif include_schools and include_crime:
+    st.info("💡 AI will synthesize insights across schools and safety")
+elif (include_schools and include_zoning) or (include_crime and include_zoning):
+    st.info("💡 AI will provide analysis across selected categories")
+elif include_schools:
+    st.info("🎓 Showing school information only")
+elif include_crime:
+    st.info("🛡️ Showing crime/safety information only")
+elif include_zoning:
+    st.info("🏗️ Showing zoning/land use information only")
 
 # Search button
 search_button = st.button("🔍 Search", use_container_width=True)
@@ -334,6 +352,10 @@ with st.expander("💡 Example Queries - Click to Copy"):
     - `How safe is the neighborhood around 195 Hoyt Street?`
     - `What's the crime situation at 150 Hancock Ave Athens GA?`
 
+    🏗️ **Zoning-Focused:**
+    - `What's the zoning at 150 Hancock Avenue?`
+    - `Can I build on the property at 1398 W Hancock Ave, Athens, GA?`
+
     💡 **Tip:** You can ask about any property address in Athens-Clarke County, Georgia!
     """)
 
@@ -348,8 +370,8 @@ if search_button:
         - What are the schools like at 1398 W Hancock Ave, Athens, GA 30606?
         - How safe is 220 College Station Road?
         """)
-    elif not include_schools and not include_crime:
-        st.warning("⚠️ **Please select at least one analysis type**\n\nCheck the box for:\n- 🎓 School Information (for school assignments and performance)\n- 🛡️ Crime & Safety Analysis (for crime statistics and trends)\n- Or both for a comprehensive analysis!")
+    elif not include_schools and not include_crime and not include_zoning:
+        st.warning("⚠️ **Please select at least one analysis type**\n\nCheck the box for:\n- 🎓 School Information (for school assignments and performance)\n- 🛡️ Crime & Safety Analysis (for crime statistics and trends)\n- 🏗️ Zoning & Land Use (for zoning and development information)\n- Or multiple options for a comprehensive analysis!")
     else:
         # Extract address and question from user query
         address_input, question_input = extract_address_from_query(user_query)
@@ -378,12 +400,21 @@ if search_button:
 
             # Show loading state
             loading_msg = "🔍 Analyzing"
-            if include_schools and include_crime:
-                loading_msg += " schools and crime data"
-            elif include_schools:
-                loading_msg += " school data"
-            else:
-                loading_msg += " crime data"
+            data_types = []
+            if include_schools:
+                data_types.append("schools")
+            if include_crime:
+                data_types.append("crime")
+            if include_zoning:
+                data_types.append("zoning")
+
+            if len(data_types) == 3:
+                loading_msg += " schools, crime, and zoning data"
+            elif len(data_types) == 2:
+                loading_msg += f" {data_types[0]} and {data_types[1]} data"
+            elif len(data_types) == 1:
+                loading_msg += f" {data_types[0]} data"
+
             loading_msg += f" for: {full_address}..."
 
             with st.spinner(loading_msg):
@@ -394,6 +425,7 @@ if search_button:
                         question=question_input,
                         include_schools=include_schools,
                         include_crime=include_crime,
+                        include_zoning=include_zoning,
                         radius_miles=0.5,
                         months_back=12
                     )
@@ -565,12 +597,44 @@ if search_button:
                             else:
                                 st.info("Comparison data not available")
 
+                    # Show zoning summary if included
+                    if include_zoning and result['zoning_info']:
+                        zoning = result['zoning_info']
+
+                        st.markdown("### 🏗️ Zoning & Land Use")
+
+                        # Key metrics
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Current Zoning", zoning.current_zoning)
+                        with col2:
+                            st.metric("Future Land Use", zoning.future_land_use)
+                        with col3:
+                            st.metric("Property Size", f"{zoning.acres:.2f} acres")
+
+                        # Descriptions
+                        st.markdown(f"**{zoning.current_zoning_description}**")
+                        st.markdown(f"**Future:** {zoning.future_land_use_description}")
+
+                        # Warnings and notes
+                        if zoning.split_zoned:
+                            st.warning("⚠️ This property has split zoning - different zoning designations apply to different parts of the property")
+
+                        if zoning.future_changed:
+                            st.info("📝 The future land use plan has been updated/changed from the original comprehensive plan")
+
+                        # Nearby context
+                        if zoning.nearby_zones:
+                            nearby_text = ", ".join(zoning.nearby_zones)
+                            st.markdown(f"**Nearby Zoning:** {nearby_text}")
+                            st.caption("Understanding nearby zoning helps gauge neighborhood character and development patterns")
+
                     st.divider()
 
                     # Display AI synthesis (if both included) or individual responses
                     st.markdown("### 🤖 AI Analysis")
 
-                    if include_schools and include_crime and result['synthesis']:
+                    if result['synthesis']:
                         # Show comprehensive synthesis
                         st.markdown(f'<div class="response-box">{result["synthesis"]}</div>', unsafe_allow_html=True)
 
@@ -604,12 +668,22 @@ if search_button:
 - View crime map: [Athens-Clarke Crime Map](https://accpd-public-transparency-site-athensclarke.hub.arcgis.com/pages/crime)
 """
 
+                        if include_zoning:
+                            sources_text += """
+**Zoning & Land Use Data:**
+- Source: Athens-Clarke County Planning Department GIS
+- Current zoning codes and future land use comprehensive plan
+- View zoning map: [Athens-Clarke GIS Portal](https://enigma.accgov.com/)
+- Verify: Contact Planning Department at (706) 613-3515
+"""
+
                         sources_text += """
 **Important Notes:**
 - All data from official public sources
-- School zones and crime patterns can change over time
+- School zones, crime patterns, and zoning regulations can change over time
 - This is for research purposes only - always verify independently
 - Visit neighborhoods in person and talk to local residents
+- For zoning questions, consult with the Planning Department before making property decisions
 """
 
                         st.markdown(sources_text)
@@ -623,6 +697,10 @@ if search_button:
                         if include_crime and result['crime_analysis']:
                             st.markdown("**Crime Data:**")
                             st.text(format_analysis_report(result['crime_analysis']))
+
+                        if include_zoning and result['zoning_info']:
+                            st.markdown("**Zoning Data:**")
+                            st.text(format_zoning_report(result['zoning_info']))
 
                 except Exception as e:
                     error_str = str(e)
@@ -650,7 +728,7 @@ if search_button:
 st.markdown("""
 <div class="footer">
     <p><strong>Athens Home Buyer Research Assistant (Beta)</strong></p>
-    <p>Powered by Claude AI • Data from Clarke County Schools, Georgia GOSA, & Athens-Clarke Police</p>
+    <p>Powered by Claude AI • Data from Clarke County Schools, Georgia GOSA, Athens-Clarke Police, & ACC Planning Dept</p>
     <p>Not affiliated with Clarke County School District, Georgia DOE, or Athens-Clarke County Government</p>
     <p>For research and informational purposes only • Always verify independently</p>
 </div>
