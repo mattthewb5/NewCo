@@ -50,21 +50,20 @@ def create_category_chart_data(analysis: CrimeAnalysis) -> pd.DataFrame:
 
     Returns:
         Pandas DataFrame ready for Streamlit charting
+        Each category is a column so we can assign colors
     """
     stats = analysis.statistics
 
+    # Create DataFrame with each category as a separate column
+    # This allows us to assign different colors to each category
     data = {
-        'Category': ['Violent', 'Property', 'Traffic', 'Other'],
-        'Count': [
-            stats.violent_count,
-            stats.property_count,
-            stats.traffic_count,
-            stats.other_count
-        ]
+        'Violent': [stats.violent_count],
+        'Property': [stats.property_count],
+        'Traffic': [stats.traffic_count],
+        'Other': [stats.other_count]
     }
 
     df = pd.DataFrame(data)
-    df = df.set_index('Category')
     return df
 
 

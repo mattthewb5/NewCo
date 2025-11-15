@@ -525,7 +525,10 @@ if search_button:
 
                         with tab1:
                             category_data = create_category_chart_data(crime)
-                            st.bar_chart(category_data, color=list(get_category_colors().values()))
+                            # Get colors in the same order as DataFrame columns
+                            colors = get_category_colors()
+                            color_list = [colors['Violent'], colors['Property'], colors['Traffic'], colors['Other']]
+                            st.bar_chart(category_data, color=color_list)
 
                             # Show percentages below chart
                             col_a, col_b, col_c, col_d = st.columns(4)
