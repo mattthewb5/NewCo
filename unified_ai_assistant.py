@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import datetime
 from school_info import get_school_info, CompleteSchoolInfo
 from crime_analysis import analyze_crime_near_address, CrimeAnalysis
+from zoning_lookup import get_zoning_info, ZoningInfo
 from ai_school_assistant import SchoolAIAssistant
 from crime_ai_assistant import CrimeAIAssistant
 
@@ -42,27 +43,30 @@ class UnifiedAIAssistant:
         question: str,
         include_schools: bool = True,
         include_crime: bool = True,
+        include_zoning: bool = True,
         radius_miles: float = 0.5,
         months_back: int = 12
     ) -> dict:
         """
-        Get comprehensive analysis combining schools and crime data
+        Get comprehensive analysis combining schools, crime, and zoning data
 
         Args:
             address: Street address in Athens-Clarke County
             question: User's question about the area
             include_schools: Whether to include school analysis
             include_crime: Whether to include crime analysis
+            include_zoning: Whether to include zoning information
             radius_miles: Search radius for crime data (default: 0.5 miles)
             months_back: Crime history period in months (default: 12)
 
         Returns:
-            Dictionary with school_info, crime_analysis, and synthesis
+            Dictionary with school_info, crime_analysis, zoning_info, and synthesis
         """
         result = {
             'address': address,
             'school_info': None,
             'crime_analysis': None,
+            'zoning_info': None,
             'school_response': None,
             'crime_response': None,
             'synthesis': None,
@@ -103,10 +107,23 @@ class UnifiedAIAssistant:
                     # Crime errors are less critical - address might not geocode
                     result['error'] = f"Crime analysis error: {str(e)}"
 
-            # Generate synthesis if we have both types of data
-            if include_schools and include_crime and result['school_info'] and result['crime_analysis']:
+            # Get zoning data if requested
+            if include_zoning:
+                try:
+                    zoning_info = get_zoning_info(address)
+                    result['zoning_info'] = zoning_info
+                except Exception as e:
+                    # Zoning errors are non-critical
+                    print(f"Zoning lookup error: {str(e)}")
+
+            # Generate synthesis if we have data
+            if result['school_info'] or result['crime_analysis'] or result['zoning_info']:
                 synthesis = self._synthesize_insights(
-                    address, question, result['school_info'], result['crime_analysis']
+                    address,
+                    question,
+                    result['school_info'],
+                    result['crime_analysis'],
+                    result['zoning_info']
                 )
                 result['synthesis'] = synthesis
 
@@ -120,23 +137,27 @@ class UnifiedAIAssistant:
         self,
         address: str,
         question: str,
-        school_info: CompleteSchoolInfo,
-        crime_analysis: CrimeAnalysis
+        school_info: Optional[CompleteSchoolInfo],
+        crime_analysis: Optional[CrimeAnalysis],
+        zoning_info: Optional[ZoningInfo]
     ) -> str:
         """
-        Synthesize insights across schools and crime data
+        Synthesize insights across schools, crime, and zoning data
 
         Args:
             address: The address being analyzed
             question: User's original question
-            school_info: School assignment and performance data
-            crime_analysis: Crime statistics and safety analysis
+            school_info: School assignment and performance data (optional)
+            crime_analysis: Crime statistics and safety analysis (optional)
+            zoning_info: Zoning and land use information (optional)
 
         Returns:
             Synthesized response from Claude
         """
         # Format school data summary
-        school_summary = f"""
+        school_summary = ""
+        if school_info:
+            school_summary = f"""
 SCHOOL ASSIGNMENTS:
 - Elementary: {school_info.elementary}
 - Middle: {school_info.middle}
@@ -144,9 +165,9 @@ SCHOOL ASSIGNMENTS:
 
 SCHOOL PERFORMANCE (where available):
 """
-        if school_info.elementary_data:
-            elem = school_info.elementary_data
-            school_summary += f"""
+            if school_info.elementary_data:
+                elem = school_info.elementary_data
+                school_summary += f"""
 Elementary School ({school_info.elementary}):
 - CCRPI Score: {elem.ccrpi_score}/100
 - Content Mastery: {elem.content_mastery_score}/100
@@ -154,9 +175,9 @@ Elementary School ({school_info.elementary}):
 - Math: {getattr(elem, 'math', 'N/A')}%
 """
 
-        if school_info.middle_data:
-            mid = school_info.middle_data
-            school_summary += f"""
+            if school_info.middle_data:
+                mid = school_info.middle_data
+                school_summary += f"""
 Middle School ({school_info.middle}):
 - CCRPI Score: {mid.ccrpi_score}/100
 - Content Mastery: {mid.content_mastery_score}/100
@@ -164,9 +185,9 @@ Middle School ({school_info.middle}):
 - Math: {getattr(mid, 'math', 'N/A')}%
 """
 
-        if school_info.high_data:
-            high = school_info.high_data
-            school_summary += f"""
+            if school_info.high_data:
+                high = school_info.high_data
+                school_summary += f"""
 High School ({school_info.high}):
 - CCRPI Score: {high.ccrpi_score}/100
 - Graduation Rate: {high.graduation_rate}%
@@ -174,7 +195,9 @@ High School ({school_info.high}):
 """
 
         # Format crime data summary
-        crime_summary = f"""
+        crime_summary = ""
+        if crime_analysis:
+            crime_summary = f"""
 CRIME & SAFETY ANALYSIS (last {crime_analysis.time_period_months} months, {crime_analysis.radius_miles} mile radius):
 
 Safety Score: {crime_analysis.safety_score.score}/100 ({crime_analysis.safety_score.level})
@@ -191,9 +214,9 @@ Crime Trends:
 - Trend: {crime_analysis.trends.trend_description}
 """
 
-        if crime_analysis.comparison:
-            comp = crime_analysis.comparison
-            crime_summary += f"""
+            if crime_analysis.comparison:
+                comp = crime_analysis.comparison
+                crime_summary += f"""
 Comparison to Athens Average:
 - This Area: {comp.area_crime_count} crimes
 - Athens Average: {comp.athens_average:.0f} crimes
@@ -201,11 +224,34 @@ Comparison to Athens Average:
 - Assessment: {comp.relative_ranking}
 """
 
+        # Format zoning data summary
+        zoning_summary = ""
+        if zoning_info:
+            zoning_summary = f"""
+ZONING & LAND USE:
+
+Current Zoning: {zoning_info.current_zoning}
+- {zoning_info.current_zoning_description}
+
+Future Land Use: {zoning_info.future_land_use}
+- {zoning_info.future_land_use_description}
+
+Property Size: {zoning_info.acres:.2f} acres ({int(zoning_info.acres * 43560)} square feet)
+"""
+            if zoning_info.split_zoned:
+                zoning_summary += "\n⚠️  Property has split zoning\n"
+
+            if zoning_info.future_changed:
+                zoning_summary += "📝 Future land use plan has been updated/changed\n"
+
+            if zoning_info.nearby_zones:
+                zoning_summary += f"\nNearby Zoning: {', '.join(zoning_info.nearby_zones)}\n"
+
         # Create synthesis prompt
         system_prompt = """You are an expert real estate analyst specializing in comprehensive neighborhood assessment.
-You help home buyers make informed decisions by synthesizing information about schools and crime/safety.
+You help home buyers make informed decisions by synthesizing information about schools, crime/safety, and zoning.
 
-Your task is to provide a balanced, honest assessment that considers both schools and safety together.
+Your task is to provide a balanced, honest assessment that considers all aspects of the property and neighborhood.
 Be direct about pros and cons. Don't sugarcoat issues but also don't exaggerate concerns."""
 
         user_prompt = f"""Based on the data below, please answer this question about the property:
@@ -218,20 +264,25 @@ ADDRESS: {address}
 
 {crime_summary}
 
+{zoning_summary}
+
 Please provide a comprehensive response that:
 
 1. DIRECTLY ANSWERS THE QUESTION with a clear summary (2-3 sentences)
-   - Synthesize both school quality AND safety
+   - Synthesize school quality, safety, AND zoning/land use
    - Be honest about tradeoffs if they exist
 
 2. KEY INSIGHTS (bullet points)
-   - School strengths/weaknesses
-   - Safety strengths/concerns
+   - School strengths/weaknesses (if applicable)
+   - Safety strengths/concerns (if applicable)
+   - Zoning implications for property use and neighborhood character (if applicable)
    - Overall suitability for the user's needs
 
 3. IMPORTANT CONSIDERATIONS
    - Any red flags or major concerns
    - Notable advantages
+   - Zoning restrictions or opportunities
+   - Future development plans that might affect the area
    - Context for the user to understand
 
 4. RECOMMENDATION
@@ -239,7 +290,7 @@ Please provide a comprehensive response that:
    - Suggestions for what to investigate further
    - Whether this area aligns with their apparent priorities
 
-Be balanced, factual, and helpful. Use specific data points from both school and crime analyses.
+Be balanced, factual, and helpful. Use specific data points from the available analyses (schools, crime, zoning).
 """
 
         # Call Claude API
