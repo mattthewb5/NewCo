@@ -14,6 +14,7 @@ import json
 import hashlib
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from address_normalization import standardize_address_format
 
 
 # ArcGIS REST API endpoint for Athens-Clarke County crime data
@@ -89,6 +90,9 @@ def geocode_address(address: str) -> Optional[Tuple[float, float]]:
     """
     try:
         geolocator = Nominatim(user_agent="athens_home_buyer_research")
+
+        # Normalize address format (suffix to prefix directionals)
+        address = standardize_address_format(address)
 
         # Add Athens, GA if not present
         if 'athens' not in address.lower():

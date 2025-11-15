@@ -9,6 +9,7 @@ import json
 import os
 from typing import Optional, Tuple, Dict, List
 from dataclasses import dataclass
+from address_normalization import standardize_address_format
 
 
 @dataclass
@@ -167,6 +168,9 @@ def lookup_school_district(address: str) -> Optional[SchoolAssignment]:
     Returns:
         SchoolAssignment object or None if not found
     """
+    # Normalize address format (e.g., "Hancock Ave W" -> "W Hancock Ave")
+    address = standardize_address_format(address)
+
     # Parse the address
     house_number, street_name = extract_address_parts(address)
     normalized_street = normalize_street_name(street_name)
