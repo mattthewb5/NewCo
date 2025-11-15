@@ -41,6 +41,30 @@ class ZoningInfo:
     longitude: float
 
 
+@dataclass
+class NearbyZoning:
+    """Container for nearby zoning analysis"""
+    # Current property
+    current_parcel: Optional[ZoningInfo]
+
+    # Surrounding parcels
+    nearby_parcels: List[ZoningInfo]
+
+    # Analysis flags
+    mixed_use_nearby: bool
+    residential_only: bool
+    commercial_nearby: bool
+    industrial_nearby: bool
+
+    # Identified concerns
+    potential_concerns: List[str]
+
+    # Summary metrics
+    total_nearby_parcels: int
+    unique_zones: List[str]
+    zone_diversity_score: float  # 0.0 (all same) to 1.0 (all different)
+
+
 def get_zoning_code_description(code: str) -> str:
     """
     Get human-readable description of zoning code
@@ -142,6 +166,138 @@ def get_future_land_use_description(land_use: str) -> str:
 
     # Default
     return f"Planned for: {land_use}"
+
+
+def _is_residential(zoning_code: str) -> bool:
+    """
+    Check if a zoning code is residential
+
+    Args:
+        zoning_code: Zoning code to check
+
+    Returns:
+        True if residential, False otherwise
+    """
+    if not zoning_code:
+        return False
+
+    code_upper = zoning_code.upper().strip()
+
+    # Residential patterns
+    residential_prefixes = ['RS-', 'RM-', 'R-', 'A-R', 'PRD']
+
+    for prefix in residential_prefixes:
+        if code_upper.startswith(prefix):
+            return True
+
+    return False
+
+
+def _is_commercial_or_mixed(zoning_code: str) -> bool:
+    """
+    Check if a zoning code is commercial or mixed use
+
+    Args:
+        zoning_code: Zoning code to check
+
+    Returns:
+        True if commercial/mixed, False otherwise
+    """
+    if not zoning_code:
+        return False
+
+    code_upper = zoning_code.upper().strip()
+
+    # Commercial and mixed use patterns
+    commercial_prefixes = ['C-', 'MU-', 'MU']
+
+    for prefix in commercial_prefixes:
+        if code_upper.startswith(prefix):
+            return True
+
+    # Exact matches for mixed use
+    if code_upper in ['MU', 'MIXED USE']:
+        return True
+
+    return False
+
+
+def _is_industrial(zoning_code: str) -> bool:
+    """
+    Check if a zoning code is industrial
+
+    Args:
+        zoning_code: Zoning code to check
+
+    Returns:
+        True if industrial, False otherwise
+    """
+    if not zoning_code:
+        return False
+
+    code_upper = zoning_code.upper().strip()
+
+    # Industrial patterns
+    industrial_prefixes = ['I-', 'IN-', 'IND-']
+
+    for prefix in industrial_prefixes:
+        if code_upper.startswith(prefix):
+            return True
+
+    return False
+
+
+def _identify_concerns(current_zoning: Optional[ZoningInfo], nearby_parcels: List[ZoningInfo]) -> List[str]:
+    """
+    Identify potential zoning concerns
+
+    Args:
+        current_zoning: The current property's zoning info
+        nearby_parcels: List of nearby parcel zoning info
+
+    Returns:
+        List of concern strings
+    """
+    concerns = []
+
+    if not current_zoning:
+        return concerns
+
+    current_code = current_zoning.current_zoning
+    current_is_residential = _is_residential(current_code)
+
+    # Check for residential next to commercial
+    if current_is_residential:
+        commercial_nearby = [p for p in nearby_parcels if _is_commercial_or_mixed(p.current_zoning)]
+        if commercial_nearby:
+            concerns.append(f"Residential property has {len(commercial_nearby)} commercial/mixed-use parcel(s) nearby")
+
+    # Check for residential next to industrial
+    if current_is_residential:
+        industrial_nearby = [p for p in nearby_parcels if _is_industrial(p.current_zoning)]
+        if industrial_nearby:
+            concerns.append(f"Residential property has {len(industrial_nearby)} industrial parcel(s) nearby - potential noise/traffic concerns")
+
+    # Check for future land use changes
+    if current_zoning.future_changed:
+        concerns.append(f"Future land use plan has been updated - area may be in transition")
+
+    # Check if future land use differs significantly from current zoning
+    if current_is_residential and current_zoning.future_land_use:
+        future_lower = current_zoning.future_land_use.lower()
+        if 'commercial' in future_lower or 'mixed' in future_lower:
+            concerns.append(f"Future land use ({current_zoning.future_land_use}) differs from current residential zoning - possible redevelopment area")
+
+    # Check for split zoning
+    if current_zoning.split_zoned:
+        concerns.append("Property has split zoning - different regulations apply to different parts")
+
+    # Check for very diverse nearby zoning (might indicate transitional area)
+    unique_zones = set(p.current_zoning for p in nearby_parcels if p.current_zoning)
+    if len(unique_zones) >= 5:
+        concerns.append(f"High zoning diversity nearby ({len(unique_zones)} different zones) - may indicate transitional neighborhood")
+
+    return concerns
 
 
 def geocode_address(address: str) -> Optional[Tuple[float, float]]:
@@ -337,6 +493,138 @@ def get_zoning_info(address: str) -> Optional[ZoningInfo]:
     return zoning_info
 
 
+def get_nearby_zoning(address: str, radius_meters: int = 250) -> Optional[NearbyZoning]:
+    """
+    Get comprehensive nearby zoning analysis for an address
+
+    Args:
+        address: Street address in Athens-Clarke County
+        radius_meters: Search radius in meters (default: 250)
+
+    Returns:
+        NearbyZoning object with detailed analysis or None if address not found
+    """
+    # Step 1: Get the current parcel's zoning
+    current_parcel = get_zoning_info(address)
+    if not current_parcel:
+        print(f"Could not get zoning for address: {address}")
+        return None
+
+    # Step 2: Query for nearby parcels with wider radius
+    latitude, longitude = current_parcel.latitude, current_parcel.longitude
+
+    zoning_data = query_zoning_api(latitude, longitude, distance_meters=radius_meters)
+    future_data = query_future_land_use_api(latitude, longitude, distance_meters=radius_meters)
+
+    if not zoning_data or not zoning_data.get('features'):
+        print("No nearby zoning data found")
+        return None
+
+    # Step 3: Build ZoningInfo objects for all nearby parcels
+    nearby_parcels = []
+
+    for feature in zoning_data['features']:
+        attrs = feature['attributes']
+
+        # Skip the current parcel (match by PIN or parcel number)
+        pin = attrs.get('PIN', '') or ''
+        pin = pin.strip() if pin else ''
+        if pin and pin == current_parcel.pin:
+            continue
+
+        parcel_number = attrs.get('PARCEL_NO', '') or ''
+        parcel_number = parcel_number.strip() if parcel_number else ''
+        if parcel_number and parcel_number == current_parcel.parcel_number:
+            continue
+
+        # Extract zoning info (handle None values)
+        current_zoning = attrs.get('CurrentZn', '') or ''
+        current_zoning = current_zoning.strip() if current_zoning else ''
+
+        combined_zoning = attrs.get('CombinedZn', '') or ''
+        combined_zoning = combined_zoning.strip() if combined_zoning else ''
+
+        acres = attrs.get('Acres', 0.0) or 0.0
+
+        split_zoned_value = attrs.get('SplitZoned', '') or ''
+        split_zoned = str(split_zoned_value).strip() != ''
+
+        # Get description
+        current_zoning_description = get_zoning_code_description(current_zoning)
+
+        # Try to find matching future land use
+        future_land_use = ''
+        future_land_use_description = ''
+        future_changed = False
+
+        if future_data and future_data.get('features'):
+            for future_feature in future_data['features']:
+                future_attrs = future_feature['attributes']
+                if future_attrs.get('PARCEL_NO', '').strip() == parcel_number:
+                    future_land_use = future_attrs.get('Updated_FL', '') or ''
+                    future_land_use = future_land_use.strip() if future_land_use else ''
+                    change_value = future_attrs.get('Change', '') or ''
+                    future_changed = str(change_value).strip().lower() == 'yes'
+                    future_land_use_description = get_future_land_use_description(future_land_use)
+                    break
+
+        # Create ZoningInfo for this nearby parcel
+        nearby_info = ZoningInfo(
+            parcel_number=parcel_number,
+            pin=pin,
+            address=f"Near {address}",
+            current_zoning=current_zoning,
+            current_zoning_description=current_zoning_description,
+            combined_zoning=combined_zoning,
+            split_zoned=split_zoned,
+            future_land_use=future_land_use,
+            future_land_use_description=future_land_use_description,
+            future_changed=future_changed,
+            acres=acres,
+            nearby_zones=[],  # Not needed for nearby parcels
+            nearby_future_use=[],
+            latitude=latitude,
+            longitude=longitude
+        )
+
+        nearby_parcels.append(nearby_info)
+
+    # Step 4: Analyze the zoning patterns
+    total_nearby = len(nearby_parcels)
+    unique_zones = list(set(p.current_zoning for p in nearby_parcels if p.current_zoning))
+
+    # Calculate diversity score
+    if total_nearby > 0:
+        zone_diversity_score = len(unique_zones) / total_nearby
+    else:
+        zone_diversity_score = 0.0
+
+    # Check for different use types
+    mixed_use_nearby = any(_is_commercial_or_mixed(p.current_zoning) for p in nearby_parcels)
+    residential_only = all(_is_residential(p.current_zoning) for p in nearby_parcels) if nearby_parcels else False
+    commercial_nearby = any(_is_commercial_or_mixed(p.current_zoning) for p in nearby_parcels)
+    industrial_nearby = any(_is_industrial(p.current_zoning) for p in nearby_parcels)
+
+    # Identify potential concerns
+    potential_concerns = _identify_concerns(current_parcel, nearby_parcels)
+
+    # Step 5: Create NearbyZoning object
+    nearby_zoning = NearbyZoning(
+        current_parcel=current_parcel,
+        nearby_parcels=nearby_parcels,
+        mixed_use_nearby=mixed_use_nearby,
+        residential_only=residential_only,
+        commercial_nearby=commercial_nearby,
+        industrial_nearby=industrial_nearby,
+        potential_concerns=potential_concerns,
+        total_nearby_parcels=total_nearby,
+        unique_zones=unique_zones,
+        zone_diversity_score=zone_diversity_score
+    )
+
+    return nearby_zoning
+
+
 def format_zoning_report(zoning_info: ZoningInfo) -> str:
     """
     Format zoning information as a readable text report
@@ -397,9 +685,83 @@ def format_zoning_report(zoning_info: ZoningInfo) -> str:
     return "\n".join(report)
 
 
-# Test function
+def format_nearby_zoning_report(nearby_zoning: NearbyZoning) -> str:
+    """
+    Format nearby zoning analysis as a readable text report
+
+    Args:
+        nearby_zoning: NearbyZoning object
+
+    Returns:
+        Formatted text report
+    """
+    report = []
+    report.append("=" * 80)
+    report.append("NEARBY ZONING ANALYSIS")
+    report.append("=" * 80)
+    report.append("")
+
+    if nearby_zoning.current_parcel:
+        current = nearby_zoning.current_parcel
+        report.append(f"Address: {current.address}")
+        report.append(f"Current Zoning: {current.current_zoning} - {current.current_zoning_description}")
+        report.append("")
+
+    # Summary statistics
+    report.append("NEIGHBORHOOD ZONING SUMMARY:")
+    report.append(f"  Total Nearby Parcels: {nearby_zoning.total_nearby_parcels}")
+    report.append(f"  Unique Zoning Types: {len(nearby_zoning.unique_zones)}")
+    report.append(f"  Zone Diversity Score: {nearby_zoning.zone_diversity_score:.2f} (0.0=uniform, 1.0=all different)")
+    report.append("")
+
+    # Zoning pattern flags
+    report.append("ZONING PATTERNS:")
+    if nearby_zoning.residential_only:
+        report.append("  ✓ Residential Only - All nearby parcels are residential")
+    if nearby_zoning.commercial_nearby:
+        report.append("  ⚠️  Commercial/Mixed Use Nearby")
+    if nearby_zoning.industrial_nearby:
+        report.append("  ⚠️  Industrial Zoning Nearby")
+    if nearby_zoning.mixed_use_nearby:
+        report.append("  • Mixed Use Development Nearby")
+    report.append("")
+
+    # Unique zones breakdown
+    if nearby_zoning.unique_zones:
+        report.append("NEARBY ZONING TYPES:")
+        for zone in sorted(nearby_zoning.unique_zones):
+            description = get_zoning_code_description(zone)
+            count = sum(1 for p in nearby_zoning.nearby_parcels if p.current_zoning == zone)
+            report.append(f"  • {zone}: {description} ({count} parcels)")
+        report.append("")
+
+    # Potential concerns
+    if nearby_zoning.potential_concerns:
+        report.append("⚠️  POTENTIAL CONCERNS:")
+        for i, concern in enumerate(nearby_zoning.potential_concerns, 1):
+            report.append(f"  {i}. {concern}")
+        report.append("")
+    else:
+        report.append("✓ No significant zoning concerns identified")
+        report.append("")
+
+    # Detailed nearby parcel list (limit to first 10)
+    if nearby_zoning.nearby_parcels:
+        report.append("NEARBY PARCELS (showing up to 10):")
+        for i, parcel in enumerate(nearby_zoning.nearby_parcels[:10], 1):
+            report.append(f"  {i}. Parcel {parcel.parcel_number}")
+            report.append(f"     Zoning: {parcel.current_zoning} - {parcel.current_zoning_description}")
+            report.append(f"     Size: {parcel.acres:.2f} acres")
+            if parcel.future_land_use:
+                report.append(f"     Future: {parcel.future_land_use}")
+        report.append("")
+
+    return "\n".join(report)
+
+
+# Test functions
 def test_zoning_lookup():
-    """Test the zoning lookup with sample addresses"""
+    """Test the basic zoning lookup with sample addresses"""
     test_addresses = [
         "150 Hancock Avenue, Athens, GA 30601",
         "1398 W Hancock Avenue, Athens, GA 30606",
@@ -419,5 +781,31 @@ def test_zoning_lookup():
             print(f"❌ Could not retrieve zoning information for: {address}")
 
 
+def test_nearby_zoning_analysis():
+    """Test the nearby zoning analysis feature"""
+    print("\n" + "=" * 80)
+    print("TESTING NEARBY ZONING ANALYSIS")
+    print("=" * 80)
+    print()
+
+    test_address = "1398 W Hancock Avenue, Athens, GA 30606"
+    print(f"Analyzing nearby zoning for: {test_address}")
+    print(f"Search radius: 250 meters")
+    print()
+
+    nearby_zoning = get_nearby_zoning(test_address, radius_meters=250)
+
+    if nearby_zoning:
+        print(format_nearby_zoning_report(nearby_zoning))
+    else:
+        print(f"❌ Could not retrieve nearby zoning analysis for: {test_address}")
+
+
 if __name__ == "__main__":
+    # Run basic test
     test_zoning_lookup()
+
+    print("\n\n")
+
+    # Run nearby zoning analysis test
+    test_nearby_zoning_analysis()
