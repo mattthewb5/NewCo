@@ -163,17 +163,14 @@ def create_safety_score_html(score: int, level: str) -> str:
     """
     color = get_safety_color(score)
 
-    html = f"""
-    <div style="text-align: center; padding: 2em; background: linear-gradient(135deg, {color}20 0%, {color}10 100%); border-radius: 1em; border: 2px solid {color};">
-        <div style="font-size: 4em; font-weight: bold; color: {color}; margin-bottom: 0.2em;">{score}</div>
-        <div style="font-size: 1.2em; color: #64748b; margin-bottom: 0.5em;">out of 100</div>
-        <div style="font-size: 1.5em; font-weight: 600; color: {color};">{level}</div>
-
-        <div style="margin-top: 1.5em; background: #e2e8f0; height: 20px; border-radius: 10px; overflow: hidden;">
-            <div style="width: {score}%; height: 100%; background: {color}; transition: width 0.3s;"></div>
-        </div>
-    </div>
-    """
+    html = f'<div style="text-align: center; padding: 2em; background: linear-gradient(135deg, {color}20 0%, {color}10 100%); border-radius: 1em; border: 2px solid {color};">' \
+           f'<div style="font-size: 4em; font-weight: bold; color: {color}; margin-bottom: 0.2em;">{score}</div>' \
+           f'<div style="font-size: 1.2em; color: #64748b; margin-bottom: 0.5em;">out of 100</div>' \
+           f'<div style="font-size: 1.5em; font-weight: 600; color: {color};">{level}</div>' \
+           f'<div style="margin-top: 1.5em; background: #e2e8f0; height: 20px; border-radius: 10px; overflow: hidden;">' \
+           f'<div style="width: {score}%; height: 100%; background: {color}; transition: width 0.3s;"></div>' \
+           f'</div>' \
+           f'</div>'
 
     return html
 
@@ -206,41 +203,30 @@ def create_comparison_html(analysis: CrimeAnalysis) -> Optional[str]:
     address_width = (comp.area_crime_count / max_crimes) * 100
     athens_width = (comp.athens_average / max_crimes) * 100
 
-    html = f"""
-    <div style="padding: 1.5em; background: white; border-radius: 0.5em; border: 1px solid #e2e8f0;">
-        <div style="font-size: 1.2em; font-weight: 600; margin-bottom: 1em; color: #334155;">
-            Comparison to Athens Average
-        </div>
-
-        <div style="margin-bottom: 1.5em;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5em;">
-                <span style="color: #64748b;">This Address</span>
-                <span style="font-weight: 600; color: {color};">{comp.area_crime_count} crimes</span>
-            </div>
-            <div style="background: #e2e8f0; height: 30px; border-radius: 5px; overflow: hidden;">
-                <div style="width: {address_width}%; height: 100%; background: {color};"></div>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 1.5em;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5em;">
-                <span style="color: #64748b;">Athens Average</span>
-                <span style="font-weight: 600; color: #6b7280;">{comp.athens_average:.0f} crimes</span>
-            </div>
-            <div style="background: #e2e8f0; height: 30px; border-radius: 5px; overflow: hidden;">
-                <div style="width: {athens_width}%; height: 100%; background: #6b7280;"></div>
-            </div>
-        </div>
-
-        <div style="text-align: center; padding: 1em; background: {color}20; border-radius: 0.5em; border-left: 4px solid {color};">
-            <div style="font-size: 1.1em; font-weight: 600; color: {color};">
-                {comp.difference_percentage:+.0f}% vs average
-            </div>
-            <div style="color: #64748b; margin-top: 0.5em;">
-                {comp.relative_ranking}
-            </div>
-        </div>
-    </div>
-    """
+    html = f'<div style="padding: 1.5em; background: white; border-radius: 0.5em; border: 1px solid #e2e8f0;">' \
+           f'<div style="font-size: 1.2em; font-weight: 600; margin-bottom: 1em; color: #334155;">Comparison to Athens Average</div>' \
+           f'<div style="margin-bottom: 1.5em;">' \
+           f'<div style="display: flex; justify-content: space-between; margin-bottom: 0.5em;">' \
+           f'<span style="color: #64748b;">This Address</span>' \
+           f'<span style="font-weight: 600; color: {color};">{comp.area_crime_count} crimes</span>' \
+           f'</div>' \
+           f'<div style="background: #e2e8f0; height: 30px; border-radius: 5px; overflow: hidden;">' \
+           f'<div style="width: {address_width}%; height: 100%; background: {color};"></div>' \
+           f'</div>' \
+           f'</div>' \
+           f'<div style="margin-bottom: 1.5em;">' \
+           f'<div style="display: flex; justify-content: space-between; margin-bottom: 0.5em;">' \
+           f'<span style="color: #64748b;">Athens Average</span>' \
+           f'<span style="font-weight: 600; color: #6b7280;">{comp.athens_average:.0f} crimes</span>' \
+           f'</div>' \
+           f'<div style="background: #e2e8f0; height: 30px; border-radius: 5px; overflow: hidden;">' \
+           f'<div style="width: {athens_width}%; height: 100%; background: #6b7280;"></div>' \
+           f'</div>' \
+           f'</div>' \
+           f'<div style="text-align: center; padding: 1em; background: {color}20; border-radius: 0.5em; border-left: 4px solid {color};">' \
+           f'<div style="font-size: 1.1em; font-weight: 600; color: {color};">{comp.difference_percentage:+.0f}% vs average</div>' \
+           f'<div style="color: #64748b; margin-top: 0.5em;">{comp.relative_ranking}</div>' \
+           f'</div>' \
+           f'</div>'
 
     return html
