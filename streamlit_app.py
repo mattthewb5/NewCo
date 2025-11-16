@@ -533,80 +533,124 @@ if search_button:
                     if include_crime and result['crime_analysis']:
                         crime = result['crime_analysis']
 
-                        # Color-coded header based on safety score
-                        safety_color = get_safety_color(crime.safety_score.score)
-                        st.markdown(f"""
-                        <div style="background-color: {safety_color}20; border-left: 4px solid {safety_color}; padding: 1em; border-radius: 0.5em; margin: 1em 0;">
-                            <h3 style="color: {safety_color}; margin: 0;">🛡️ Crime & Safety Analysis</h3>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        try:
+                            # Validate required attributes before displaying
+                            missing_attrs = []
 
-                        # Safety gauge and key metrics
-                        col1, col2 = st.columns([1, 2])
+                            # Check top-level attributes
+                            if not hasattr(crime, 'safety_score'):
+                                missing_attrs.append('safety_score')
+                            elif crime.safety_score is not None:
+                                # Check safety_score sub-attributes
+                                if not hasattr(crime.safety_score, 'score'):
+                                    missing_attrs.append('safety_score.score')
+                                if not hasattr(crime.safety_score, 'level'):
+                                    missing_attrs.append('safety_score.level')
 
-                        with col1:
-                            # Safety score visual
-                            safety_html = create_safety_score_html(crime.safety_score.score, crime.safety_score.level)
-                            st.markdown(safety_html, unsafe_allow_html=True)
+                            if not hasattr(crime, 'statistics'):
+                                missing_attrs.append('statistics')
+                            if not hasattr(crime, 'trends'):
+                                missing_attrs.append('trends')
 
-                        with col2:
-                            # Key statistics table
-                            stats_table = format_crime_stats_table(crime)
+                            if missing_attrs:
+                                st.warning(f"""
+                                ⚠️ **Crime data was retrieved but some metrics are unavailable**
 
-                            # Overview
-                            st.markdown("**Overview:**")
-                            for key, value in stats_table['Overview'].items():
-                                st.markdown(f"• {key}: **{value}**")
+                                Missing: {', '.join(missing_attrs)}
 
-                            # Most common crime
-                            st.markdown(f"• Most Common: **{crime.statistics.most_common_crime}** ({crime.statistics.most_common_count} incidents)")
-
-                        st.markdown("")  # Spacing
-
-                        # Charts in tabs for better mobile experience
-                        tab1, tab2, tab3 = st.tabs(["📊 By Category", "📈 Trends", "⚖️ Comparison"])
-
-                        with tab1:
-                            category_data = create_category_chart_data(crime)
-                            # Get colors in the same order as DataFrame columns
-                            colors = get_category_colors()
-                            color_list = [colors['Violent'], colors['Property'], colors['Traffic'], colors['Other']]
-                            st.bar_chart(category_data, color=color_list)
-
-                            # Show percentages below chart
-                            col_a, col_b, col_c, col_d = st.columns(4)
-                            with col_a:
-                                st.metric("Violent", f"{crime.statistics.violent_percentage:.1f}%")
-                            with col_b:
-                                st.metric("Property", f"{crime.statistics.property_percentage:.1f}%")
-                            with col_c:
-                                st.metric("Traffic", f"{crime.statistics.traffic_percentage:.1f}%")
-                            with col_d:
-                                st.metric("Other", f"{crime.statistics.other_percentage:.1f}%")
-
-                        with tab2:
-                            trend_data = create_trend_chart_data(crime)
-                            st.bar_chart(trend_data)
-
-                            # Show trend details
-                            trend_color = "green" if crime.trends.trend == "decreasing" else "red" if crime.trends.trend == "increasing" else "gray"
-                            trend_symbol = "📉" if crime.trends.trend == "decreasing" else "📈" if crime.trends.trend == "increasing" else "➡️"
-
-                            st.markdown(f"""
-                            <div style="text-align: center; padding: 1em; background: {trend_color}20; border-radius: 0.5em; margin-top: 1em;">
-                                <div style="font-size: 1.5em;">{trend_symbol}</div>
-                                <div style="font-weight: 600; color: {trend_color};">
-                                    {crime.trends.trend.title()}: {crime.trends.change_percentage:+.1f}%
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                        with tab3:
-                            comparison_html = create_comparison_html(crime)
-                            if comparison_html:
-                                st.markdown(comparison_html, unsafe_allow_html=True)
+                                The crime analysis may be incomplete. Try refreshing or contact support if this persists.
+                                """)
                             else:
-                                st.info("Comparison data not available")
+                                # Color-coded header based on safety score
+                                safety_color = get_safety_color(crime.safety_score.score)
+                                st.markdown(f"""
+                                <div style="background-color: {safety_color}20; border-left: 4px solid {safety_color}; padding: 1em; border-radius: 0.5em; margin: 1em 0;">
+                                    <h3 style="color: {safety_color}; margin: 0;">🛡️ Crime & Safety Analysis</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                                # Safety gauge and key metrics
+                                col1, col2 = st.columns([1, 2])
+
+                                with col1:
+                                    # Safety score visual
+                                    safety_html = create_safety_score_html(crime.safety_score.score, crime.safety_score.level)
+                                    st.markdown(safety_html, unsafe_allow_html=True)
+
+                                with col2:
+                                    # Key statistics table
+                                    stats_table = format_crime_stats_table(crime)
+
+                                    # Overview
+                                    st.markdown("**Overview:**")
+                                    for key, value in stats_table['Overview'].items():
+                                        st.markdown(f"• {key}: **{value}**")
+
+                                    # Most common crime
+                                    st.markdown(f"• Most Common: **{crime.statistics.most_common_crime}** ({crime.statistics.most_common_count} incidents)")
+
+                                st.markdown("")  # Spacing
+
+                                # Charts in tabs for better mobile experience
+                                tab1, tab2, tab3 = st.tabs(["📊 By Category", "📈 Trends", "⚖️ Comparison"])
+
+                                with tab1:
+                                    category_data = create_category_chart_data(crime)
+                                    # Get colors in the same order as DataFrame columns
+                                    colors = get_category_colors()
+                                    color_list = [colors['Violent'], colors['Property'], colors['Traffic'], colors['Other']]
+                                    st.bar_chart(category_data, color=color_list)
+
+                                    # Show percentages below chart
+                                    col_a, col_b, col_c, col_d = st.columns(4)
+                                    with col_a:
+                                        st.metric("Violent", f"{crime.statistics.violent_percentage:.1f}%")
+                                    with col_b:
+                                        st.metric("Property", f"{crime.statistics.property_percentage:.1f}%")
+                                    with col_c:
+                                        st.metric("Traffic", f"{crime.statistics.traffic_percentage:.1f}%")
+                                    with col_d:
+                                        st.metric("Other", f"{crime.statistics.other_percentage:.1f}%")
+
+                                with tab2:
+                                    trend_data = create_trend_chart_data(crime)
+                                    st.bar_chart(trend_data)
+
+                                    # Show trend details
+                                    trend_color = "green" if crime.trends.trend == "decreasing" else "red" if crime.trends.trend == "increasing" else "gray"
+                                    trend_symbol = "📉" if crime.trends.trend == "decreasing" else "📈" if crime.trends.trend == "increasing" else "➡️"
+
+                                    st.markdown(f"""
+                                    <div style="text-align: center; padding: 1em; background: {trend_color}20; border-radius: 0.5em; margin-top: 1em;">
+                                        <div style="font-size: 1.5em;">{trend_symbol}</div>
+                                        <div style="font-weight: 600; color: {trend_color};">
+                                            {crime.trends.trend.title()}: {crime.trends.change_percentage:+.1f}%
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+
+                                with tab3:
+                                    comparison_html = create_comparison_html(crime)
+                                    if comparison_html:
+                                        st.markdown(comparison_html, unsafe_allow_html=True)
+                                    else:
+                                        st.info("Comparison data not available")
+
+                        except (AttributeError, KeyError, TypeError) as e:
+                            st.error(f"""
+                            ❌ **Error displaying crime data**
+
+                            The crime data structure may have changed or is incomplete.
+
+                            **Technical details:** {str(e)}
+
+                            **What you can do:**
+                            - Try searching again
+                            - Try a different address
+                            - Check that the crime data API is accessible
+
+                            Other sections (schools, zoning) should still be available below.
+                            """)
 
                     # Show zoning summary if included
                     if include_zoning and result['zoning_info']:
