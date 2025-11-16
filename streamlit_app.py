@@ -4,12 +4,23 @@ Athens Home Buyer Research Assistant - Web Interface
 Streamlit web app for comprehensive neighborhood research (schools + crime/safety)
 """
 
-import streamlit as st
+# Standard library imports
 import os
+import traceback
+from collections import Counter
+
+# Third-party imports
+import streamlit as st
+
+# Local application imports
 from school_info import get_school_info, format_complete_report
 from ai_school_assistant import SchoolAIAssistant
 from crime_analysis import analyze_crime_near_address, format_analysis_report
-from zoning_lookup import format_zoning_report
+from zoning_lookup import (
+    format_zoning_report,
+    format_nearby_zoning_report,
+    get_zoning_code_description
+)
 from unified_ai_assistant import UnifiedAIAssistant
 from address_extraction import extract_address_from_query
 from crime_visualizations import (
@@ -668,14 +679,12 @@ if search_button:
                             # Expandable detailed view
                             with st.expander("📊 Detailed Neighborhood Zoning Analysis"):
                                 # Show zoning distribution
-                                from collections import Counter
                                 zoning_counts = Counter(p.current_zoning for p in nearby_zoning.nearby_parcels if p.current_zoning)
 
                                 st.write("**Zoning Distribution (250m radius):**")
                                 for code, count in zoning_counts.most_common():
                                     pct = (count / nearby_zoning.total_nearby_parcels) * 100 if nearby_zoning.total_nearby_parcels > 0 else 0
                                     # Get description for this code
-                                    from zoning_lookup import get_zoning_code_description
                                     description = get_zoning_code_description(code)
                                     st.write(f"- **{code}**: {description}")
                                     st.write(f"  {count} parcels ({pct:.1f}%)")
@@ -795,7 +804,6 @@ if search_button:
                             st.markdown("**Zoning Data:**")
                             # Show comprehensive nearby zoning report if available
                             if result.get('nearby_zoning'):
-                                from zoning_lookup import format_nearby_zoning_report
                                 st.text(format_nearby_zoning_report(result['nearby_zoning']))
                             elif result.get('zoning_info'):
                                 st.text(format_zoning_report(result['zoning_info']))
@@ -819,7 +827,6 @@ if search_button:
 
                     # Show technical details in expander for debugging
                     with st.expander("🔧 Technical Details (for debugging)"):
-                        import traceback
                         st.code(traceback.format_exc())
 
 # Footer
