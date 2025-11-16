@@ -653,127 +653,164 @@ if search_button:
                             """)
 
                     # Show zoning summary if included
-                    if include_zoning and result['zoning_info']:
-                        # Check if we have comprehensive nearby zoning analysis
-                        nearby_zoning = result.get('nearby_zoning')
+                    if include_zoning:
+                        try:
+                            # Check if we have any zoning data
+                            if not result.get('zoning_info') and not result.get('nearby_zoning'):
+                                st.warning("⚠️ **Zoning data could not be retrieved for this address**")
+                            else:
+                                # Check if we have comprehensive nearby zoning analysis
+                                nearby_zoning = result.get('nearby_zoning')
 
-                        if nearby_zoning:
-                            # Comprehensive nearby zoning display
-                            st.markdown("### 🏗️ Zoning & Land Use")
+                                # Validate nearby_zoning has required attributes
+                                use_nearby = False
+                                if nearby_zoning is not None:
+                                    required_attrs = ['current_parcel', 'nearby_parcels', 'zone_diversity_score',
+                                                     'total_nearby_parcels', 'unique_zones']
+                                    missing_attrs = [attr for attr in required_attrs if not hasattr(nearby_zoning, attr)]
 
-                            # Current parcel info
-                            if nearby_zoning.current_parcel:
-                                col1, col2, col3 = st.columns(3)
+                                    if missing_attrs:
+                                        st.info(f"""
+                                        ℹ️ **Nearby zoning analysis incomplete** (missing: {', '.join(missing_attrs)})
 
-                                with col1:
-                                    st.metric("Current Zoning", nearby_zoning.current_parcel.current_zoning)
-                                    st.caption(nearby_zoning.current_parcel.current_zoning_description)
-
-                                with col2:
-                                    if nearby_zoning.current_parcel.future_land_use:
-                                        st.metric("Future Land Use", nearby_zoning.current_parcel.future_land_use)
-                                        st.caption(nearby_zoning.current_parcel.future_land_use_description or "")
+                                        Showing basic zoning information instead.
+                                        """)
                                     else:
-                                        st.metric("Future Land Use", "Not Available")
+                                        use_nearby = True
 
-                                with col3:
-                                    # Show diversity score with color coding
-                                    diversity_pct = nearby_zoning.zone_diversity_score * 100
-                                    if nearby_zoning.zone_diversity_score < 0.03:
-                                        diversity_label = "Low (Uniform)"
-                                        diversity_color = "🟢"
-                                    elif nearby_zoning.zone_diversity_score < 0.06:
-                                        diversity_label = "Moderate (Mixed)"
-                                        diversity_color = "🟡"
-                                    else:
-                                        diversity_label = "High (Transitional)"
-                                        diversity_color = "🟠"
+                                if use_nearby:
+                                    # Comprehensive nearby zoning display
+                                    st.markdown("### 🏗️ Zoning & Land Use")
 
-                                    st.metric("Area Diversity", f"{diversity_pct:.1f}%")
-                                    st.caption(f"{diversity_color} {diversity_label}")
+                                    # Current parcel info
+                                    if nearby_zoning.current_parcel:
+                                        col1, col2, col3 = st.columns(3)
 
-                            # Neighborhood summary
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Parcels Analyzed", nearby_zoning.total_nearby_parcels)
-                            with col2:
-                                st.metric("Unique Zones", len(nearby_zoning.unique_zones))
-                            with col3:
-                                if nearby_zoning.residential_only:
-                                    st.metric("Neighborhood Type", "Residential Only")
-                                elif nearby_zoning.mixed_use_nearby:
-                                    st.metric("Neighborhood Type", "Mixed Use")
-                                else:
-                                    st.metric("Neighborhood Type", "Varied")
+                                        with col1:
+                                            st.metric("Current Zoning", nearby_zoning.current_parcel.current_zoning)
+                                            st.caption(nearby_zoning.current_parcel.current_zoning_description)
 
-                            # Show concerns if any
-                            if nearby_zoning.potential_concerns:
-                                st.warning("**⚠️ Zoning Considerations:**")
-                                for concern in nearby_zoning.potential_concerns:
-                                    st.write(f"• {concern}")
+                                        with col2:
+                                            if nearby_zoning.current_parcel.future_land_use:
+                                                st.metric("Future Land Use", nearby_zoning.current_parcel.future_land_use)
+                                                st.caption(nearby_zoning.current_parcel.future_land_use_description or "")
+                                            else:
+                                                st.metric("Future Land Use", "Not Available")
 
-                            # Warnings and notes from current parcel
-                            if nearby_zoning.current_parcel:
-                                if nearby_zoning.current_parcel.split_zoned:
-                                    st.info("📋 This property has split zoning - different regulations may apply to different parts")
+                                        with col3:
+                                            # Show diversity score with color coding
+                                            diversity_pct = nearby_zoning.zone_diversity_score * 100
+                                            if nearby_zoning.zone_diversity_score < 0.03:
+                                                diversity_label = "Low (Uniform)"
+                                                diversity_color = "🟢"
+                                            elif nearby_zoning.zone_diversity_score < 0.06:
+                                                diversity_label = "Moderate (Mixed)"
+                                                diversity_color = "🟡"
+                                            else:
+                                                diversity_label = "High (Transitional)"
+                                                diversity_color = "🟠"
 
-                                if nearby_zoning.current_parcel.future_changed:
-                                    st.info("📝 The future land use plan has been updated/changed")
+                                            st.metric("Area Diversity", f"{diversity_pct:.1f}%")
+                                            st.caption(f"{diversity_color} {diversity_label}")
 
-                            # Expandable detailed view
-                            with st.expander("📊 Detailed Neighborhood Zoning Analysis"):
-                                # Show zoning distribution
-                                zoning_counts = Counter(p.current_zoning for p in nearby_zoning.nearby_parcels if p.current_zoning)
+                                    # Neighborhood summary
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Parcels Analyzed", nearby_zoning.total_nearby_parcels)
+                                    with col2:
+                                        st.metric("Unique Zones", len(nearby_zoning.unique_zones))
+                                    with col3:
+                                        if nearby_zoning.residential_only:
+                                            st.metric("Neighborhood Type", "Residential Only")
+                                        elif nearby_zoning.mixed_use_nearby:
+                                            st.metric("Neighborhood Type", "Mixed Use")
+                                        else:
+                                            st.metric("Neighborhood Type", "Varied")
 
-                                st.write("**Zoning Distribution (250m radius):**")
-                                for code, count in zoning_counts.most_common():
-                                    pct = (count / nearby_zoning.total_nearby_parcels) * 100 if nearby_zoning.total_nearby_parcels > 0 else 0
-                                    # Get description for this code
-                                    description = get_zoning_code_description(code)
-                                    st.write(f"- **{code}**: {description}")
-                                    st.write(f"  {count} parcels ({pct:.1f}%)")
+                                    # Show concerns if any
+                                    if nearby_zoning.potential_concerns:
+                                        st.warning("**⚠️ Zoning Considerations:**")
+                                        for concern in nearby_zoning.potential_concerns:
+                                            st.write(f"• {concern}")
 
-                                # Pattern summary
-                                st.write("")
-                                st.write("**Neighborhood Patterns:**")
-                                if nearby_zoning.residential_only:
-                                    st.write("✓ Residential only - all nearby parcels are residential")
-                                if nearby_zoning.commercial_nearby:
-                                    st.write("• Commercial/mixed-use parcels present nearby")
-                                if nearby_zoning.industrial_nearby:
-                                    st.write("⚠️ Industrial zoning nearby")
+                                    # Warnings and notes from current parcel
+                                    if nearby_zoning.current_parcel:
+                                        if nearby_zoning.current_parcel.split_zoned:
+                                            st.info("📋 This property has split zoning - different regulations may apply to different parts")
 
-                        else:
-                            # Fallback to basic zoning display
-                            zoning = result['zoning_info']
+                                        if nearby_zoning.current_parcel.future_changed:
+                                            st.info("📝 The future land use plan has been updated/changed")
 
-                            st.markdown("### 🏗️ Zoning & Land Use")
+                                    # Expandable detailed view
+                                    with st.expander("📊 Detailed Neighborhood Zoning Analysis"):
+                                        # Show zoning distribution
+                                        zoning_counts = Counter(p.current_zoning for p in nearby_zoning.nearby_parcels if p.current_zoning)
 
-                            # Key metrics
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Current Zoning", zoning.current_zoning)
-                            with col2:
-                                st.metric("Future Land Use", zoning.future_land_use)
-                            with col3:
-                                st.metric("Property Size", f"{zoning.acres:.2f} acres")
+                                        st.write("**Zoning Distribution (250m radius):**")
+                                        for code, count in zoning_counts.most_common():
+                                            pct = (count / nearby_zoning.total_nearby_parcels) * 100 if nearby_zoning.total_nearby_parcels > 0 else 0
+                                            # Get description for this code
+                                            description = get_zoning_code_description(code)
+                                            st.write(f"- **{code}**: {description}")
+                                            st.write(f"  {count} parcels ({pct:.1f}%)")
 
-                            # Descriptions
-                            st.markdown(f"**{zoning.current_zoning_description}**")
-                            st.markdown(f"**Future:** {zoning.future_land_use_description}")
+                                        # Pattern summary
+                                        st.write("")
+                                        st.write("**Neighborhood Patterns:**")
+                                        if nearby_zoning.residential_only:
+                                            st.write("✓ Residential only - all nearby parcels are residential")
+                                        if nearby_zoning.commercial_nearby:
+                                            st.write("• Commercial/mixed-use parcels present nearby")
+                                        if nearby_zoning.industrial_nearby:
+                                            st.write("⚠️ Industrial zoning nearby")
 
-                            # Warnings and notes
-                            if zoning.split_zoned:
-                                st.warning("⚠️ This property has split zoning - different zoning designations apply to different parts of the property")
+                                elif result.get('zoning_info'):
+                                    # Fallback to basic zoning display
+                                    zoning = result['zoning_info']
 
-                            if zoning.future_changed:
-                                st.info("📝 The future land use plan has been updated/changed from the original comprehensive plan")
+                                    st.markdown("### 🏗️ Zoning & Land Use")
 
-                            # Nearby context
-                            if zoning.nearby_zones:
-                                nearby_text = ", ".join(zoning.nearby_zones)
-                                st.markdown(f"**Nearby Zoning:** {nearby_text}")
-                                st.caption("Understanding nearby zoning helps gauge neighborhood character and development patterns")
+                                    # Key metrics
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Current Zoning", zoning.current_zoning)
+                                    with col2:
+                                        st.metric("Future Land Use", zoning.future_land_use)
+                                    with col3:
+                                        st.metric("Property Size", f"{zoning.acres:.2f} acres")
+
+                                    # Descriptions
+                                    st.markdown(f"**{zoning.current_zoning_description}**")
+                                    st.markdown(f"**Future:** {zoning.future_land_use_description}")
+
+                                    # Warnings and notes
+                                    if zoning.split_zoned:
+                                        st.warning("⚠️ This property has split zoning - different zoning designations apply to different parts of the property")
+
+                                    if zoning.future_changed:
+                                        st.info("📝 The future land use plan has been updated/changed from the original comprehensive plan")
+
+                                    # Nearby context
+                                    if zoning.nearby_zones:
+                                        nearby_text = ", ".join(zoning.nearby_zones)
+                                        st.markdown(f"**Nearby Zoning:** {nearby_text}")
+                                        st.caption("Understanding nearby zoning helps gauge neighborhood character and development patterns")
+
+                        except (AttributeError, KeyError, TypeError) as e:
+                            st.error(f"""
+                            ❌ **Error displaying zoning data**
+
+                            The zoning data structure may have changed or is incomplete.
+
+                            **Technical details:** {str(e)}
+
+                            **What you can do:**
+                            - Try searching again
+                            - Try a different address
+                            - Contact ACC Planning Department at (706) 613-3515 for official zoning information
+
+                            Other sections (schools, crime) should still be available.
+                            """)
 
                     st.divider()
 
