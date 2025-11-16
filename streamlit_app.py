@@ -518,6 +518,50 @@ if search_button:
                     # Display results
                     st.success(f"✓ Analysis Complete: {full_address}")
 
+                    # Validate data structures before display
+                    validation_warnings = []
+
+                    # Validate school data
+                    if include_schools:
+                        school_data = result.get('school_info')
+                        if school_data is None:
+                            validation_warnings.append("School data was requested but not retrieved")
+                        elif not hasattr(school_data, 'elementary') or not hasattr(school_data, 'middle') or not hasattr(school_data, 'high'):
+                            validation_warnings.append("School data structure is incomplete or invalid")
+                            result['school_info'] = None
+
+                    # Validate crime data
+                    if include_crime:
+                        crime_data = result.get('crime_analysis')
+                        if crime_data is None:
+                            validation_warnings.append("Crime data was requested but not retrieved")
+                        elif not hasattr(crime_data, 'safety_score') or not hasattr(crime_data, 'statistics') or not hasattr(crime_data, 'trends'):
+                            validation_warnings.append("Crime data structure is incomplete or invalid")
+                            result['crime_analysis'] = None
+
+                    # Validate zoning data
+                    if include_zoning:
+                        zoning_data = result.get('zoning_info')
+                        if zoning_data is None and result.get('nearby_zoning') is None:
+                            validation_warnings.append("Zoning data was requested but not retrieved")
+                        elif zoning_data is not None:
+                            if not hasattr(zoning_data, 'current_zoning') or not hasattr(zoning_data, 'future_land_use'):
+                                validation_warnings.append("Zoning data structure is incomplete or invalid")
+                                result['zoning_info'] = None
+
+                        # Validate nearby_zoning if present (optional, so no warning if missing)
+                        nearby_zoning_data = result.get('nearby_zoning')
+                        if nearby_zoning_data is not None:
+                            required_nearby_attrs = ['current_parcel', 'nearby_parcels', 'zone_diversity_score']
+                            missing_nearby = [attr for attr in required_nearby_attrs if not hasattr(nearby_zoning_data, attr)]
+                            if missing_nearby:
+                                validation_warnings.append(f"Nearby zoning data is incomplete (missing: {', '.join(missing_nearby)})")
+                                result['nearby_zoning'] = None
+
+                    # Show validation warnings if any
+                    if validation_warnings:
+                        st.warning("**⚠️ Data Validation Issues:**\n\n" + "\n".join(f"• {warning}" for warning in validation_warnings))
+
                     # Show school summary if included
                     if include_schools and result['school_info']:
                         st.markdown("### 🎓 School Assignments")
