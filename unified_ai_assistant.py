@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import datetime
 from school_info import get_school_info, CompleteSchoolInfo
 from crime_analysis import analyze_crime_near_address, CrimeAnalysis
-from zoning_lookup import get_zoning_info, ZoningInfo
+from zoning_lookup import get_zoning_info, get_nearby_zoning, ZoningInfo, NearbyZoning
 from ai_school_assistant import SchoolAIAssistant
 from crime_ai_assistant import CrimeAIAssistant
 
@@ -67,6 +67,7 @@ class UnifiedAIAssistant:
             'school_info': None,
             'crime_analysis': None,
             'zoning_info': None,
+            'nearby_zoning': None,
             'school_response': None,
             'crime_response': None,
             'synthesis': None,
@@ -110,8 +111,16 @@ class UnifiedAIAssistant:
             # Get zoning data if requested
             if include_zoning:
                 try:
-                    zoning_info = get_zoning_info(address)
-                    result['zoning_info'] = zoning_info
+                    # Use nearby zoning analysis for comprehensive insights
+                    nearby_zoning = get_nearby_zoning(address, radius_meters=250)
+                    if nearby_zoning and nearby_zoning.current_parcel:
+                        # Store the basic zoning info for backward compatibility
+                        result['zoning_info'] = nearby_zoning.current_parcel
+                        # Also store the nearby analysis
+                        result['nearby_zoning'] = nearby_zoning
+                    else:
+                        # Fallback to basic zoning if nearby analysis fails
+                        result['zoning_info'] = get_zoning_info(address)
                 except Exception as e:
                     # Zoning errors are non-critical
                     print(f"Zoning lookup error: {str(e)}")
@@ -123,7 +132,8 @@ class UnifiedAIAssistant:
                     question,
                     result['school_info'],
                     result['crime_analysis'],
-                    result['zoning_info']
+                    result['zoning_info'],
+                    result.get('nearby_zoning')
                 )
                 result['synthesis'] = synthesis
 
@@ -139,7 +149,8 @@ class UnifiedAIAssistant:
         question: str,
         school_info: Optional[CompleteSchoolInfo],
         crime_analysis: Optional[CrimeAnalysis],
-        zoning_info: Optional[ZoningInfo]
+        zoning_info: Optional[ZoningInfo],
+        nearby_zoning: Optional[NearbyZoning] = None
     ) -> str:
         """
         Synthesize insights across schools, crime, and zoning data
@@ -150,6 +161,7 @@ class UnifiedAIAssistant:
             school_info: School assignment and performance data (optional)
             crime_analysis: Crime statistics and safety analysis (optional)
             zoning_info: Zoning and land use information (optional)
+            nearby_zoning: Nearby zoning analysis with concerns (optional)
 
         Returns:
             Synthesized response from Claude
@@ -244,7 +256,36 @@ Property Size: {zoning_info.acres:.2f} acres ({int(zoning_info.acres * 43560)} s
             if zoning_info.future_changed:
                 zoning_summary += "📝 Future land use plan has been updated/changed\n"
 
-            if zoning_info.nearby_zones:
+            # Add enhanced nearby zoning analysis if available
+            if nearby_zoning:
+                zoning_summary += f"""
+NEIGHBORHOOD ZONING ANALYSIS (250m radius):
+- Total nearby parcels: {nearby_zoning.total_nearby_parcels}
+- Unique zoning types: {len(nearby_zoning.unique_zones)}
+- Zone diversity score: {nearby_zoning.zone_diversity_score:.2f} (0.0=uniform, 1.0=highly diverse)
+"""
+                # Diversity interpretation
+                if nearby_zoning.zone_diversity_score < 0.03:
+                    zoning_summary += "  → Low diversity: Uniform, stable neighborhood character\n"
+                elif nearby_zoning.zone_diversity_score < 0.06:
+                    zoning_summary += "  → Moderate diversity: Mixed-use neighborhood\n"
+                else:
+                    zoning_summary += "  → High diversity: Transitional or evolving area\n"
+
+                # Pattern flags
+                if nearby_zoning.residential_only:
+                    zoning_summary += "- Neighborhood character: Residential only\n"
+                if nearby_zoning.commercial_nearby:
+                    zoning_summary += "- Commercial/mixed-use parcels present nearby\n"
+                if nearby_zoning.industrial_nearby:
+                    zoning_summary += "- ⚠️  Industrial zoning nearby\n"
+
+                # Concerns
+                if nearby_zoning.potential_concerns:
+                    zoning_summary += "\nPotential Zoning Concerns:\n"
+                    for concern in nearby_zoning.potential_concerns:
+                        zoning_summary += f"  • {concern}\n"
+            elif zoning_info.nearby_zones:
                 zoning_summary += f"\nNearby Zoning: {', '.join(zoning_info.nearby_zones)}\n"
 
         # Create synthesis prompt
@@ -319,7 +360,9 @@ Be balanced, factual, and helpful. Use specific data points from the available a
 **Data Sources & Verification:**
 - School Data: Clarke County Schools (2024-25) & Georgia GOSA (2023-24)
 - Crime Data: Athens-Clarke County Police Department (current as of {today})
+- Zoning Data: Athens-Clarke County Planning Department GIS
 - This analysis is for informational purposes only. Always verify independently and visit the neighborhood in person.
+- For zoning questions, contact ACC Planning Department at (706) 613-3515
 """
 
             return response + footer
