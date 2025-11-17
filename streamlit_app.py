@@ -860,7 +860,7 @@ if search_button:
                                         else:
                                             summary_parts.append("**✓ No concerns**")
 
-                                        st.info("📋 **Quick Summary:** " + " • ".join(summary_parts))
+                                        st.info(f"""📋 **Quick Summary:** {' • '.join(summary_parts)}""")
 
                                 elif result.get('zoning_info'):
                                     # Fallback to basic zoning display
