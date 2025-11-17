@@ -569,7 +569,7 @@ if search_button:
                         school_info = result['school_info']
 
                         # Quick summary box
-                        st.info(f"""📋 **Quick Summary:** Assigned to {school_info.elementary} (Elementary), {school_info.middle} (Middle), {school_info.high} (High).""")
+                        st.info(f"""📋 **Quick Summary:** **{school_info.elementary}** (Elementary) • **{school_info.middle}** (Middle) • **{school_info.high}** (High)""")
 
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -708,10 +708,10 @@ if search_button:
                                hasattr(crime, 'statistics') and crime.statistics and \
                                hasattr(crime, 'trends') and crime.trends:
 
-                                summary_text = f"""📋 **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}). **{crime.statistics.total_incidents}** incidents in past 12 months. Crime is **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)."""
+                                summary_text = f"""📋 **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}) • **{crime.statistics.total_incidents}** incidents • Crime **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)"""
 
                                 if hasattr(crime.statistics, 'violent_count') and crime.statistics.violent_count > 0:
-                                    summary_text += f" **{crime.statistics.violent_count}** violent crimes reported."
+                                    summary_text += f" • **{crime.statistics.violent_count}** violent crimes"
 
                                 # Use success if safe, warning if concerning
                                 if crime.safety_score.score >= 60:
@@ -848,17 +848,17 @@ if search_button:
                                         # Add diversity assessment
                                         diversity_pct = nearby_zoning.zone_diversity_score * 100
                                         if nearby_zoning.zone_diversity_score < 0.03:
-                                            summary_parts.append("**Neighborhood:** Uniform (low diversity)")
+                                            summary_parts.append("**Neighborhood:** Uniform")
                                         elif nearby_zoning.zone_diversity_score < 0.06:
-                                            summary_parts.append("**Neighborhood:** Mixed (moderate diversity)")
+                                            summary_parts.append("**Neighborhood:** Mixed")
                                         else:
-                                            summary_parts.append("**Neighborhood:** Transitional (high diversity)")
+                                            summary_parts.append("**Neighborhood:** Transitional")
 
                                         # Add concerns summary
                                         if nearby_zoning.potential_concerns:
-                                            summary_parts.append(f"**⚠️ {len(nearby_zoning.potential_concerns)} concern(s) identified**")
+                                            summary_parts.append(f"**⚠️ {len(nearby_zoning.potential_concerns)} concern(s)**")
                                         else:
-                                            summary_parts.append("**✓ No significant concerns**")
+                                            summary_parts.append("**✓ No concerns**")
 
                                         st.info("📋 **Quick Summary:** " + " • ".join(summary_parts))
 
