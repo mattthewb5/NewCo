@@ -565,6 +565,12 @@ if search_button:
                     # Show school summary if included
                     if include_schools and result['school_info']:
                         st.markdown("### 🎓 School Assignments")
+
+                        school_info = result['school_info']
+
+                        # Quick summary box
+                        st.info(f"""📋 **Quick Summary:** Assigned to {school_info.elementary} (Elementary), {school_info.middle} (Middle), {school_info.high} (High).""")
+
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Elementary", result['school_info'].elementary)
