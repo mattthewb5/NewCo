@@ -707,8 +707,14 @@ if search_button:
                             if hasattr(crime, 'safety_score') and crime.safety_score and \
                                hasattr(crime, 'statistics') and crime.statistics and \
                                hasattr(crime, 'trends') and crime.trends:
-
-                                summary_text = f"""📋 **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}) • **{crime.statistics.total_incidents}** incidents • Crime **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)"""
+# Determine safety icon based on score
+if crime.safety_score.score >= 80:
+    safety_icon = "✅"
+elif crime.safety_score.score >= 60:
+    safety_icon = "✓"
+else:
+    safety_icon = "⚠️"
+                                summary_text = f"""{safety_icon} **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}) • **{crime.statistics.total_incidents}** incidents • Crime **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)"""
 
                                 if hasattr(crime.statistics, 'violent_count') and crime.statistics.violent_count > 0:
                                     summary_text += f" • **{crime.statistics.violent_count}** violent crimes"
