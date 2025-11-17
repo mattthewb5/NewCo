@@ -840,6 +840,28 @@ if search_button:
                                         if hasattr(nearby_zoning, 'industrial_nearby') and nearby_zoning.industrial_nearby:
                                             st.write("⚠️ Industrial zoning nearby")
 
+                                    # Summary at end of zoning section
+                                    if nearby_zoning.current_parcel:
+                                        summary_parts = []
+                                        summary_parts.append(f"**Current Zoning:** {nearby_zoning.current_parcel.current_zoning}")
+
+                                        # Add diversity assessment
+                                        diversity_pct = nearby_zoning.zone_diversity_score * 100
+                                        if nearby_zoning.zone_diversity_score < 0.03:
+                                            summary_parts.append("**Neighborhood:** Uniform (low diversity)")
+                                        elif nearby_zoning.zone_diversity_score < 0.06:
+                                            summary_parts.append("**Neighborhood:** Mixed (moderate diversity)")
+                                        else:
+                                            summary_parts.append("**Neighborhood:** Transitional (high diversity)")
+
+                                        # Add concerns summary
+                                        if nearby_zoning.potential_concerns:
+                                            summary_parts.append(f"**⚠️ {len(nearby_zoning.potential_concerns)} concern(s) identified**")
+                                        else:
+                                            summary_parts.append("**✓ No significant concerns**")
+
+                                        st.info("📋 **Quick Summary:** " + " • ".join(summary_parts))
+
                                 elif result.get('zoning_info'):
                                     # Fallback to basic zoning display
                                     zoning = result['zoning_info']
