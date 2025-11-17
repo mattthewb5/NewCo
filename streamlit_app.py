@@ -702,6 +702,26 @@ if search_button:
                             Other sections (schools, zoning) should still be available below.
                             """)
 
+                        # Crime summary box at end of section
+                        try:
+                            if hasattr(crime, 'safety_score') and crime.safety_score and \
+                               hasattr(crime, 'statistics') and crime.statistics and \
+                               hasattr(crime, 'trends') and crime.trends:
+
+                                summary_text = f"""📋 **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}). **{crime.statistics.total_incidents}** incidents in past 12 months. Crime is **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)."""
+
+                                if hasattr(crime.statistics, 'violent_count') and crime.statistics.violent_count > 0:
+                                    summary_text += f" **{crime.statistics.violent_count}** violent crimes reported."
+
+                                # Use success if safe, warning if concerning
+                                if crime.safety_score.score >= 60:
+                                    st.success(summary_text)
+                                else:
+                                    st.warning(summary_text)
+
+                        except (AttributeError, KeyError, TypeError):
+                            pass  # Skip summary if data incomplete
+
                     # Show zoning summary if included
                     if include_zoning:
                         try:
