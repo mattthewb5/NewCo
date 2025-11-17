@@ -803,9 +803,15 @@ if search_button:
                                         st.write("**Neighborhood Patterns:**")
                                         if nearby_zoning.residential_only:
                                             st.write("✓ Residential only - all nearby parcels are residential")
-                                        if nearby_zoning.commercial_nearby:
+
+                                        # Check for commercial nearby with fallback
+                                        if hasattr(nearby_zoning, 'commercial_nearby') and nearby_zoning.commercial_nearby:
                                             st.write("• Commercial/mixed-use parcels present nearby")
-                                        if nearby_zoning.industrial_nearby:
+                                        elif nearby_zoning.mixed_use_nearby:
+                                            st.write("• Mixed-use parcels present nearby")
+
+                                        # Check for industrial nearby
+                                        if hasattr(nearby_zoning, 'industrial_nearby') and nearby_zoning.industrial_nearby:
                                             st.write("⚠️ Industrial zoning nearby")
 
                                 elif result.get('zoning_info'):
