@@ -718,7 +718,7 @@ if search_button:
                                 else:
                                     safety_icon = "⚠️"
 
-                                summary_text = f"""{safety_icon} **Quick Summary:** Safety Score **{crime.safety_score.score}/100** ({crime.safety_score.level}) • **{crime.statistics.total_incidents}** incidents • Crime **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%)"""
+                                summary_text = f"""{safety_icon} **Quick Summary:** This area scored **{crime.safety_score.score}/100** for safety ({crime.safety_score.level.lower()}), with **{crime.statistics.total_incidents}** reported incidents in the past year. Crime is **{crime.trends.trend}** ({crime.trends.change_percentage:+.1f}%). Read on for what these numbers really mean."""
 
                                 if hasattr(crime.statistics, 'violent_count') and crime.statistics.violent_count > 0:
                                     summary_text += f" • **{crime.statistics.violent_count}** violent crimes"
