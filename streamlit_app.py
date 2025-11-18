@@ -569,9 +569,9 @@ if search_button:
                         school_info = result['school_info']
 
                         # Quick summary box
-                        st.info(f"""📋 **Quick Summary:** **{school_info.elementary}** (Elementary) • **{school_info.middle}** (Middle) • **{school_info.high}** (High)
+                        st.info(f"""📋 **Quick Summary:** Your kids would attend **{school_info.elementary}** (Elementary), **{school_info.middle}** (Middle), and **{school_info.high}** (High).
 
-📊 *Performance metrics and school details available below*""")
+📊 *Scroll down for the full story on these schools, including test scores, demographics, and what makes each one unique.*""")
 
                         col1, col2, col3 = st.columns(3)
                         with col1:
