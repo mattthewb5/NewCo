@@ -922,6 +922,89 @@ if search_button:
 
                     st.divider()
 
+                    # Key Insights at a Glance
+                    st.markdown("### 🎯 Key Insights at a Glance")
+                    st.markdown("*Here are the highlights before you dive into the full analysis:*")
+                    st.markdown("")
+
+                    insights_col1, insights_col2 = st.columns(2)
+
+                    with insights_col1:
+                        st.markdown("**✅ Strengths:**")
+                        strengths = []
+
+                        # School strengths
+                        if include_schools and result.get('school_info'):
+                            school_info = result['school_info']
+                            strengths.append(f"Assigned to {school_info.elementary}, {school_info.middle}, {school_info.high}")
+
+                        # Safety strengths
+                        if include_crime and result.get('crime_analysis'):
+                            crime = result['crime_analysis']
+                            if hasattr(crime, 'safety_score') and crime.safety_score:
+                                if crime.safety_score.score >= 80:
+                                    strengths.append(f"Very safe area (Safety Score: {crime.safety_score.score}/100)")
+                                elif crime.safety_score.score >= 60:
+                                    strengths.append(f"Safe area (Safety Score: {crime.safety_score.score}/100)")
+
+                                if hasattr(crime, 'trends') and crime.trends:
+                                    if crime.trends.trend == "decreasing":
+                                        strengths.append(f"Crime trending down ({crime.trends.change_percentage:+.1f}%)")
+
+                        # Zoning strengths
+                        if include_zoning and result.get('nearby_zoning'):
+                            nearby_zoning = result['nearby_zoning']
+                            if hasattr(nearby_zoning, 'residential_only') and nearby_zoning.residential_only:
+                                strengths.append("Residential neighborhood with uniform zoning")
+                            if hasattr(nearby_zoning, 'potential_concerns') and not nearby_zoning.potential_concerns:
+                                strengths.append("No zoning concerns identified")
+
+                        # Display strengths
+                        if strengths:
+                            for strength in strengths[:5]:  # Limit to 5 items
+                                st.markdown(f"• {strength}")
+                        else:
+                            st.markdown("*See detailed analysis below*")
+
+                    with insights_col2:
+                        st.markdown("**⚠️ Things to Consider:**")
+                        considerations = []
+
+                        # Safety considerations
+                        if include_crime and result.get('crime_analysis'):
+                            crime = result['crime_analysis']
+                            if hasattr(crime, 'safety_score') and crime.safety_score:
+                                if crime.safety_score.score < 60:
+                                    considerations.append(f"Safety score below 60 ({crime.safety_score.score}/100)")
+
+                            if hasattr(crime, 'statistics') and crime.statistics:
+                                if hasattr(crime.statistics, 'violent_count') and crime.statistics.violent_count > 10:
+                                    considerations.append(f"{crime.statistics.violent_count} violent crimes reported")
+
+                            if hasattr(crime, 'trends') and crime.trends:
+                                if crime.trends.trend == "increasing":
+                                    considerations.append(f"Crime trending up ({crime.trends.change_percentage:+.1f}%)")
+
+                        # Zoning considerations
+                        if include_zoning and result.get('nearby_zoning'):
+                            nearby_zoning = result['nearby_zoning']
+                            if hasattr(nearby_zoning, 'mixed_use_nearby') and nearby_zoning.mixed_use_nearby:
+                                considerations.append("Mixed-use zoning nearby")
+                            if hasattr(nearby_zoning, 'potential_concerns') and nearby_zoning.potential_concerns:
+                                for concern in nearby_zoning.potential_concerns[:2]:  # First 2 concerns
+                                    considerations.append(concern)
+
+                        # Display considerations
+                        if considerations:
+                            for consideration in considerations[:5]:  # Limit to 5 items
+                                st.markdown(f"• {consideration}")
+                        else:
+                            st.markdown("*No major concerns identified*")
+
+                    st.markdown("")  # Add spacing
+                    st.caption("💡 These are highlights from the data. Read the complete AI analysis below for the full story with context and nuance.")
+                    st.markdown("---")
+
                     # Display AI synthesis (if both included) or individual responses
                     st.markdown("### 🤖 AI Analysis")
 
