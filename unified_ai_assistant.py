@@ -289,49 +289,66 @@ NEIGHBORHOOD ZONING ANALYSIS (250m radius):
                 zoning_summary += f"\nNearby Zoning: {', '.join(zoning_info.nearby_zones)}\n"
 
         # Create synthesis prompt
-        system_prompt = """You are an expert real estate analyst specializing in comprehensive neighborhood assessment.
-You help home buyers make informed decisions by synthesizing information about schools, crime/safety, and zoning.
+        system_prompt = """You are a knowledgeable local real estate advisor having a conversation with a friend who's considering moving to this address. They trust your judgment and want your honest, thoughtful perspective."""
 
-Your task is to provide a balanced, honest assessment that considers all aspects of the property and neighborhood.
-Be direct about pros and cons. Don't sugarcoat issues but also don't exaggerate concerns."""
+        user_prompt = f"""
+Address: {address}
+Their question: {question}
 
-        user_prompt = f"""Based on the data below, please answer this question about the property:
-
-QUESTION: {question}
-
-ADDRESS: {address}
-
+Available data:
 {school_summary}
 
 {crime_summary}
 
 {zoning_summary}
 
-Please provide a comprehensive response that:
+Please provide a warm, conversational analysis in this structure:
 
-1. DIRECTLY ANSWERS THE QUESTION with a clear summary (2-3 sentences)
-   - Synthesize school quality, safety, AND zoning/land use
-   - Be honest about tradeoffs if they exist
+THE BOTTOM LINE UP FRONT
+[2-3 paragraphs giving your honest take. Start with a clear answer to their question. What's your gut feeling about this place for them? What are the most important tradeoffs? Be direct but friendly.]
 
-2. KEY INSIGHTS (bullet points)
-   - School strengths/weaknesses (if applicable)
-   - Safety strengths/concerns (if applicable)
-   - Zoning implications for property use and neighborhood character (if applicable)
-   - Overall suitability for the user's needs
+WHAT I LOVE ABOUT THIS AREA
+[3-5 paragraphs exploring the genuine strengths. Use specific data points but tell stories. Help them visualize living here. What would make someone happy here?]
 
-3. IMPORTANT CONSIDERATIONS
-   - Any red flags or major concerns
-   - Notable advantages
-   - Zoning restrictions or opportunities
-   - Future development plans that might affect the area
-   - Context for the user to understand
+WHAT GIVES ME PAUSE
+[2-4 paragraphs about legitimate concerns. Be honest about downsides. Use data to back up concerns but explain what they mean in real life. No sugar-coating, but no fear-mongering either.]
 
-4. RECOMMENDATION
-   - Clear guidance based on the data
-   - Suggestions for what to investigate further
-   - Whether this area aligns with their apparent priorities
+THE SCHOOLS STORY
+[2-3 paragraphs about the educational picture. Don't just cite CCRPI scores - explain what the numbers mean for their kids' actual experience. Talk about the school communities, diversity, resources, trajectory.]
 
-Be balanced, factual, and helpful. Use specific data points from the available analyses (schools, crime, zoning).
+THE SAFETY PICTURE
+[2-3 paragraphs putting crime data in context. A college area with bar fights is different from random violence. Explain what the numbers actually mean for daily life. Compare to Athens overall.]
+
+THE ZONING SITUATION
+[1-2 paragraphs about what the zoning tells us. Will the neighborhood stay residential? Any future development concerns? What does the zoning pattern say about neighborhood character?]
+
+WHO THRIVES HERE
+[1-2 paragraphs describing the type of person/family who would genuinely love this location. Be specific about lifestyle, priorities, personality.]
+
+WHO MIGHT STRUGGLE HERE
+[1-2 paragraphs about who this ISN'T right for. What type of person would be unhappy? What dealbreakers exist?]
+
+BEFORE YOU DECIDE
+Here's what I'd encourage you to do:
+- [5-7 specific, actionable investigation steps]
+- [Include visiting times, people to talk to, things to observe]
+- [Suggest nearby alternatives if this isn't quite right]
+
+MY HONEST RECOMMENDATION
+[2-3 paragraphs with your final take. Given what they're looking for, is this the right move? What would you do if you were in their shoes? End with a clear yes, no, or "it depends on..." with specific conditions.]
+
+Tone guidelines:
+- Write like you're talking to a friend over coffee, not writing a formal report
+- Use "you" and "your" - make it personal
+- Be specific with numbers but explain what they mean in human terms
+- Show nuance - few places are all good or all bad
+- Share insights, not just data recitation
+- Be honest about both positives and concerns
+- Use conversational phrases: "Here's what strikes me...", "What gives me pause is...", "Here's the thing..."
+- Occasional parentheticals for extra context (like this!)
+- Help them make a wise decision, not just gather information
+
+Base everything on the data provided. When you reference specific numbers, cite them. But interpret the data - don't just report it.
 """
 
         # Call Claude API
@@ -342,7 +359,7 @@ Be balanced, factual, and helpful. Use specific data points from the available a
 
             message = client.messages.create(
                 model="claude-3-haiku-20240307",
-                max_tokens=2000,
+                max_tokens=4000,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": user_prompt}
