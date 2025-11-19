@@ -1,301 +1,119 @@
 """
-Base configuration class for county-specific implementations
+Base configuration class for county-specific settings.
 
-All county configurations must inherit from BaseCountyConfig and implement
-the required abstract methods.
+MERGE NOTE: This is the foundation for multi-county support.
+- Athens equivalent: N/A (Athens is hardcoded)
+- New architecture: Configuration-driven county support
+- Backward compatible: Counties can have different capabilities
+- See: MERGE_PLAN.md for merge strategy
+
+Last Updated: November 2025
 """
 
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List
 
 
 @dataclass
-class SchoolInfo:
-    """Standardized school information structure"""
-    elementary: str
-    middle: str
-    high: str
-    elementary_data: Optional[Dict[str, Any]] = None
-    middle_data: Optional[Dict[str, Any]] = None
-    high_data: Optional[Dict[str, Any]] = None
+class CountyConfig:
+    """
+    Base configuration for a county's data sources and settings.
 
+    This class defines all possible variations between counties.
+    Not all counties will use all fields - some may be None.
+    """
 
-@dataclass
-class CrimeAnalysis:
-    """Standardized crime analysis structure"""
-    safety_score: Any  # SafetyScore object
-    statistics: Any  # CrimeStatistics object
-    trends: Any  # CrimeTrends object
-    comparison: Optional[Any] = None  # AreaComparison object
-    time_period_months: int = 12
-    radius_miles: float = 0.5
+    # ===== IDENTITY =====
+    county_name: str                    # Internal ID (e.g., "loudoun", "athens_clarke")
+    state: str                          # Two-letter state code
+    display_name: str                   # Human-readable name
 
+    # Development status
+    is_production_ready: bool = False   # Ready for real users?
+    is_primary_county: bool = False     # Developer's home county?
 
-@dataclass
-class ZoningInfo:
-    """Standardized zoning information structure"""
-    current_zoning: str
-    current_zoning_description: str
-    future_land_use: Optional[str] = None
-    future_land_use_description: Optional[str] = None
-    acres: float = 0.0
-    split_zoned: bool = False
-    future_changed: bool = False
-    nearby_zones: Optional[list] = None
+    # ===== SCHOOLS =====
+    school_district_name: str = ""
+    school_zone_data_source: str = ""   # 'csv', 'api', 'pdf', 'manual'
+    school_zone_file_path: Optional[str] = None
+    school_api_endpoint: Optional[str] = None
+    school_boundary_tool_url: Optional[str] = None  # For user verification
 
+    # State-level school performance data
+    state_school_performance_source: str = "unknown"  # e.g., "GOSA", "Virginia School Quality Profiles"
+    state_performance_api: Optional[str] = None
 
-@dataclass
-class NearbyZoning:
-    """Enhanced nearby zoning analysis"""
-    current_parcel: Optional[ZoningInfo] = None
-    total_nearby_parcels: int = 0
-    unique_zones: list = None
-    zone_diversity_score: float = 0.0
-    residential_only: bool = False
-    commercial_nearby: bool = False
-    mixed_use_nearby: bool = False
-    industrial_nearby: bool = False
-    potential_concerns: list = None
+    # ===== CRIME & SAFETY =====
+    crime_data_source: str = ""         # 'api', 'csv', 'manual'
+    crime_api_endpoint: Optional[str] = None
+    crime_data_file_path: Optional[str] = None
+
+    # Multi-jurisdiction support (for counties with towns)
+    has_multiple_jurisdictions: bool = False
+    town_police_sources: Optional[Dict[str, str]] = None  # {'Leesburg': 'url', ...}
+
+    # ===== ZONING & LAND USE =====
+    zoning_data_source: str = ""        # 'arcgis', 'api', 'manual'
+    zoning_api_endpoint: Optional[str] = None
+    zoning_portal_url: Optional[str] = None  # For user verification
+
+    # Multi-jurisdiction zoning (for counties with incorporated towns)
+    has_incorporated_towns: bool = False
+    incorporated_towns: List[str] = field(default_factory=list)  # ['Leesburg', 'Purcellville', ...]
+    town_boundaries_file: Optional[str] = None  # GeoJSON with town boundaries
+    town_zoning_sources: Optional[Dict[str, str]] = None  # {'Leesburg': 'url', ...}
+
+    # ===== GEOGRAPHY =====
+    county_bounds: Dict[str, float] = field(default_factory=dict)  # {'min_lat': x, 'max_lat': y, ...}
+    major_towns: List[str] = field(default_factory=list)  # For display/filtering
+
+    # ===== DATA UPDATE SCHEDULE =====
+    data_update_frequency: Dict[str, str] = field(default_factory=dict)  # {'schools': 'annually', ...}
+
+    # ===== CONTACT INFORMATION (for user verification) =====
+    school_district_phone: Optional[str] = None
+    school_district_website: Optional[str] = None
+    police_department_contact: Optional[str] = None
+    planning_department_contact: Optional[str] = None
+    planning_department_website: Optional[str] = None
+
+    # ===== FEATURE FLAGS =====
+    # What data is currently available?
+    has_school_data: bool = False
+    has_crime_data: bool = False
+    has_zoning_data: bool = False
+
+    # ===== VALIDATION =====
+    # Can developer personally validate results?
+    can_validate_locally: bool = False
+    test_addresses_available: bool = False
 
     def __post_init__(self):
-        if self.unique_zones is None:
-            self.unique_zones = []
-        if self.potential_concerns is None:
-            self.potential_concerns = []
+        """Validate configuration after initialization."""
+        # Ensure incorporated_towns is a list, not None
+        if self.incorporated_towns is None:
+            self.incorporated_towns = []
 
+        # Validate that multi-jurisdiction flags match data
+        if self.has_incorporated_towns and not self.incorporated_towns:
+            raise ValueError(f"{self.county_name}: has_incorporated_towns=True but no towns listed")
 
-class BaseCountyConfig(ABC):
-    """
-    Abstract base class for county configurations
+        if self.has_multiple_jurisdictions and not self.town_police_sources:
+            # This is OK - might just mean Sheriff covers everything
+            pass
 
-    Each county must implement this interface to provide data for:
-    - School assignments and performance
-    - Crime statistics and safety analysis
-    - Zoning information and land use
+    def get_jurisdiction_count(self) -> int:
+        """Return number of jurisdictions (1 = county only, 2+ = county + towns)."""
+        if not self.has_incorporated_towns:
+            return 1
+        return 1 + len(self.incorporated_towns)
 
-    Example:
-        class LoudounConfig(BaseCountyConfig):
-            def get_schools(self, address: str) -> SchoolInfo:
-                # Implementation for Loudoun County
-                ...
-    """
+    def is_town_incorporated(self, town_name: str) -> bool:
+        """Check if a town is incorporated (has separate zoning)."""
+        return town_name in self.incorporated_towns
 
-    def __init__(self):
-        """Initialize county configuration"""
-        self.name = self.get_county_name()
-        self.state = self.get_state()
-
-    @abstractmethod
-    def get_county_name(self) -> str:
-        """
-        Return the county name
-
-        Example:
-            return "Loudoun County"
-        """
-        pass
-
-    @abstractmethod
-    def get_state(self) -> str:
-        """
-        Return the state abbreviation
-
-        Example:
-            return "VA"
-        """
-        pass
-
-    @abstractmethod
-    def get_schools(self, address: str) -> Optional[SchoolInfo]:
-        """
-        Get school assignments and performance data for an address
-
-        Args:
-            address: Full street address (e.g., "123 Main St, City, STATE ZIP")
-
-        Returns:
-            SchoolInfo object with elementary, middle, high school assignments
-            and optional performance data
-
-        Raises:
-            ValueError: If address cannot be geocoded
-            APIError: If data source is unavailable
-
-        Example:
-            schools = config.get_schools("43875 Centergate Drive, Ashburn, VA 20148")
-            print(schools.elementary)  # "Mill Run Elementary"
-        """
-        pass
-
-    @abstractmethod
-    def get_crime(self, address: str, radius_miles: float = 0.5, months_back: int = 12) -> Optional[CrimeAnalysis]:
-        """
-        Get crime statistics and safety analysis for an address
-
-        Args:
-            address: Full street address
-            radius_miles: Search radius in miles (default: 0.5)
-            months_back: Historical period in months (default: 12)
-
-        Returns:
-            CrimeAnalysis object with safety score, statistics, trends
-
-        Raises:
-            ValueError: If address cannot be geocoded
-            APIError: If data source is unavailable
-
-        Example:
-            crime = config.get_crime("123 Main St, City, STATE", radius_miles=0.5)
-            print(crime.safety_score.score)  # 75
-        """
-        pass
-
-    @abstractmethod
-    def get_zoning(self, address: str) -> Optional[ZoningInfo]:
-        """
-        Get zoning information for an address
-
-        Args:
-            address: Full street address
-
-        Returns:
-            ZoningInfo object with current zoning, future land use, etc.
-
-        Raises:
-            ValueError: If address cannot be geocoded
-            APIError: If data source is unavailable
-
-        Example:
-            zoning = config.get_zoning("123 Main St, City, STATE")
-            print(zoning.current_zoning)  # "R-1"
-        """
-        pass
-
-    @abstractmethod
-    def get_nearby_zoning(self, address: str, radius_meters: int = 250) -> Optional[NearbyZoning]:
-        """
-        Get nearby zoning analysis for an address
-
-        Args:
-            address: Full street address
-            radius_meters: Search radius in meters (default: 250)
-
-        Returns:
-            NearbyZoning object with pattern analysis and concerns
-
-        Raises:
-            ValueError: If address cannot be geocoded
-            APIError: If data source is unavailable
-
-        Example:
-            nearby = config.get_nearby_zoning("123 Main St, City, STATE")
-            print(nearby.potential_concerns)  # ["Industrial zoning nearby"]
-        """
-        pass
-
-    def has_incorporated_areas(self) -> bool:
-        """
-        Does this county have incorporated towns/cities with separate jurisdictions?
-
-        Default: False (most counties are unified)
-
-        Override this in county config if applicable:
-            def has_incorporated_areas(self) -> bool:
-                return True  # Loudoun has 7 incorporated towns
-        """
-        return False
-
-    def get_incorporated_areas(self) -> list:
-        """
-        Get list of incorporated town/city names
-
-        Default: Empty list
-
-        Override if has_incorporated_areas() returns True:
-            def get_incorporated_areas(self) -> list:
-                return ["Leesburg", "Purcellville", "Hamilton", ...]
-        """
-        return []
-
-    def detect_jurisdiction(self, address: str) -> Dict[str, str]:
-        """
-        Detect which jurisdiction (county or incorporated area) handles an address
-
-        Default implementation: Always county
-
-        Override if has_incorporated_areas() returns True to implement
-        boundary detection logic
-
-        Args:
-            address: Full street address
-
-        Returns:
-            Dictionary with 'type' and 'name' keys
-            Example: {'type': 'town', 'name': 'Leesburg'}
-                     {'type': 'county', 'name': 'Loudoun County'}
-        """
-        return {
-            'type': 'county',
-            'name': self.name
-        }
-
-    def get_ai_context(self) -> str:
-        """
-        Get county-specific context for AI prompts
-
-        This allows customizing the AI analysis with local knowledge,
-        common issues, and county-specific considerations.
-
-        Default: Empty string (no additional context)
-
-        Override to provide county-specific context:
-            def get_ai_context(self) -> str:
-                return '''
-                Loudoun County context:
-                - Data Center Alley: Eastern Loudoun has massive data center development
-                - Western Loudoun: Rural, historic, agricultural preservation
-                - Route 7 corridor: High-density mixed-use development
-                - LCPS: Rapid growth, frequent boundary changes
-                '''
-        """
-        return ""
-
-    def validate_address(self, address: str) -> bool:
-        """
-        Validate that an address is within this county
-
-        Default implementation: Always True (no validation)
-
-        Override to implement county boundary checking:
-            def validate_address(self, address: str) -> bool:
-                lat, lon = geocode(address)
-                return self.point_in_county_boundary(lat, lon)
-        """
-        return True
-
-    def get_data_sources(self) -> Dict[str, str]:
-        """
-        Get dictionary of data sources used by this county
-
-        Useful for documentation and citations
-
-        Returns:
-            Dictionary mapping data type to source URL
-
-        Example:
-            return {
-                'schools': 'https://dashboards.lcps.org/...',
-                'crime': 'https://www.loudoun.gov/crimedashboard',
-                'zoning': 'https://logis.loudoun.gov/gis/...'
-            }
-        """
-        return {}
-
-    def __str__(self) -> str:
-        """String representation of config"""
-        return f"{self.name}, {self.state}"
-
-    def __repr__(self) -> str:
-        """Debug representation of config"""
-        return f"{self.__class__.__name__}(name='{self.name}', state='{self.state}')"
+    def get_zoning_authority(self, is_in_town: bool, town_name: Optional[str] = None) -> str:
+        """Get the zoning authority for an address."""
+        if is_in_town and town_name:
+            return f"Town of {town_name}"
+        return f"{self.display_name}"
