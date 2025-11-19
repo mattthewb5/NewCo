@@ -33,14 +33,14 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== SCHOOLS =====
     school_district_name="Loudoun County Public Schools (LCPS)",
-    school_zone_data_source="api",  # LCPS School Locator API
+    school_zone_data_source="api",  # LCPS has school locator API
     school_zone_file_path=None,
-    school_api_endpoint="TODO: Get from loudoun_county_data_sources.md - LCPS School Locator API",
-    school_boundary_tool_url="https://www.lcps.org/schools",
+    school_api_endpoint="TODO: Research LCPS School Locator API endpoint - see docs/lcps_school_locator_research.md",
+    school_boundary_tool_url="TODO: LCPS boundary tool URL from research",
 
-    # Virginia school performance data
+    # Virginia school performance (from research report)
     state_school_performance_source="Virginia School Quality Profiles",
-    state_performance_api="TODO: Get from loudoun_county_data_sources.md - VDOE API or schoolquality.virginia.gov",
+    state_performance_api="TODO: Find Virginia DOE API if available",
 
     # ===== CRIME & SAFETY =====
     crime_data_source="api",  # LCSO Crime Dashboard (launched Aug 2025)
@@ -119,7 +119,7 @@ LOUDOUN_CONFIG = CountyConfig(
     planning_department_website="https://www.loudoun.gov/planning",
 
     # ===== FEATURE FLAGS =====
-    has_school_data=False,   # TODO: Implement in Phase 3
+    has_school_data=False,   # Phase 3 - Infrastructure complete, API endpoint pending
     has_crime_data=False,    # Phase 2 - Infrastructure complete, API endpoint pending
     has_zoning_data=True,    # ✅ Phase 1 complete - County GIS working!
 
