@@ -44,16 +44,20 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== CRIME & SAFETY =====
     crime_data_source="api",  # LCSO Crime Dashboard (launched Aug 2025)
-    crime_api_endpoint="TODO: Get from loudoun_county_data_sources.md - LCSO Dashboard API or GeoHub API",
+    crime_api_endpoint="TODO: Research LCSO Crime Dashboard API endpoint - see docs/lcso_crime_dashboard_research.md",
     crime_data_file_path=None,
 
     # Multi-jurisdiction: Sheriff + 7 town police departments
     has_multiple_jurisdictions=True,
     town_police_sources={
-        # TODO: Get from loudoun_county_data_sources.md - town police dept URLs
-        'Leesburg': 'TODO: Leesburg PD URL',
-        'Purcellville': 'TODO: Purcellville PD URL (if separate)',
-        # Other towns may use LCSO
+        # Town police departments - most towns use LCSO, some have own PD
+        'Leesburg': 'TODO: Leesburg PD Crime Data (if available)',
+        'Purcellville': 'TODO: Purcellville PD Crime Data (if available)',
+        'Middleburg': 'TODO: Middleburg uses LCSO or has own data?',
+        'Hamilton': 'TODO: Hamilton uses LCSO',
+        'Lovettsville': 'TODO: Lovettsville uses LCSO',
+        'Round Hill': 'TODO: Round Hill uses LCSO',
+        'Hillsboro': 'TODO: Hillsboro uses LCSO'
     },
 
     # ===== ZONING & LAND USE =====
@@ -116,7 +120,7 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== FEATURE FLAGS =====
     has_school_data=False,   # TODO: Implement in Phase 3
-    has_crime_data=False,    # TODO: Implement in Phase 4
+    has_crime_data=False,    # Phase 2 - Infrastructure complete, API endpoint pending
     has_zoning_data=True,    # ✅ Phase 1 complete - County GIS working!
 
     # ===== VALIDATION =====
