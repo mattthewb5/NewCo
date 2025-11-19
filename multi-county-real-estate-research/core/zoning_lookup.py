@@ -228,6 +228,7 @@ class ZoningLookup:
                 'geometry': f'{lon},{lat}',
                 'geometryType': 'esriGeometryPoint',
                 'spatialRel': 'esriSpatialRelIntersects',
+                'inSR': '4326',  # WGS84 spatial reference
                 'outFields': '*',
                 'returnGeometry': 'false',
                 'f': 'json'
@@ -253,14 +254,14 @@ class ZoningLookup:
 
             # Try common field names for zoning code
             zoning_code = None
-            for field in ['ZONING', 'ZONE', 'ZONE_CODE', 'ZONING_CODE', 'ZONECODE']:
+            for field in ['ZO_ZONE', 'ZONING', 'ZONE', 'ZONE_CODE', 'ZONING_CODE', 'ZONECODE']:
                 if field in attributes and attributes[field]:
                     zoning_code = str(attributes[field])
                     break
 
             # Try common field names for description
             zoning_description = None
-            for field in ['ZONE_DESC', 'ZONING_DESC', 'DESCRIPTION', 'DESC', 'ZONE_DESCRIPTION']:
+            for field in ['ZD_ZONE_DESC', 'ZD_ZONE_NAME', 'ZONE_DESC', 'ZONING_DESC', 'DESCRIPTION', 'DESC', 'ZONE_DESCRIPTION']:
                 if field in attributes and attributes[field]:
                     zoning_description = str(attributes[field])
                     break
