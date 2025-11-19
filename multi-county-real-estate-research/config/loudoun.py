@@ -58,8 +58,8 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== ZONING & LAND USE =====
     zoning_data_source="arcgis",  # Loudoun County GIS REST API
-    zoning_api_endpoint="TODO: Get from loudoun_county_data_sources.md - Loudoun GIS REST API endpoint",
-    zoning_portal_url="https://logis.loudoun.gov/",
+    zoning_api_endpoint="TODO: Get from loudoun_county_data_sources.md - Loudoun County GIS REST API endpoint for zoning layer",
+    zoning_portal_url="https://logis.loudoun.gov/",  # Verified from research
 
     # 7 incorporated towns with separate zoning ordinances
     has_incorporated_towns=True,
