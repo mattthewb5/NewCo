@@ -33,18 +33,18 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== SCHOOLS =====
     school_district_name="Loudoun County Public Schools (LCPS)",
-    school_zone_data_source="api",  # LCPS has school locator API
+    school_zone_data_source="api",  # LCPS via Loudoun County GIS ArcGIS REST API
     school_zone_file_path=None,
-    school_api_endpoint="TODO: Research LCPS School Locator API endpoint - see docs/lcps_school_locator_research.md",
-    school_boundary_tool_url="TODO: LCPS boundary tool URL from research",
+    school_api_endpoint="https://logis.loudoun.gov/gis/rest/services/COL/Schools/MapServer",
+    school_boundary_tool_url="https://www.lcps.org/o/support/page/school-attendance-zone-maps",
 
     # Virginia school performance (from research report)
     state_school_performance_source="Virginia School Quality Profiles",
-    state_performance_api="TODO: Find Virginia DOE API if available",
+    state_performance_api="https://schoolquality.virginia.gov",  # Phase 3B - future enhancement
 
     # ===== CRIME & SAFETY =====
-    crime_data_source="api",  # LCSO Crime Dashboard (launched Aug 2025)
-    crime_api_endpoint="TODO: Research LCSO Crime Dashboard API endpoint - see docs/lcso_crime_dashboard_research.md",
+    crime_data_source="api",  # LCSO Crime Dashboard (launched Aug 2025) - Power BI (no public API)
+    crime_api_endpoint="https://www.loudoun.gov/crimedashboard",  # Note: Power BI dashboard, not REST API
     crime_data_file_path=None,
 
     # Multi-jurisdiction: Sheriff + 7 town police departments
@@ -119,8 +119,8 @@ LOUDOUN_CONFIG = CountyConfig(
     planning_department_website="https://www.loudoun.gov/planning",
 
     # ===== FEATURE FLAGS =====
-    has_school_data=False,   # Phase 3 - Infrastructure complete, API endpoint pending
-    has_crime_data=False,    # Phase 2 - Infrastructure complete, API endpoint pending
+    has_school_data=True,    # ✅ Phase 3 complete - LCPS School Locator API working!
+    has_crime_data=False,    # Phase 2A complete (infrastructure), Phase 2B pending (LCSO API access)
     has_zoning_data=True,    # ✅ Phase 1 complete - County GIS working!
 
     # ===== VALIDATION =====

@@ -256,31 +256,27 @@ class SchoolLookup:
             Dictionary with elementary, middle, high schools or None if failed
 
         Note:
-            API format varies by district. This is a template that
-            needs to be adapted based on actual API structure.
+            API format varies by district. This routes to county-specific
+            implementations based on configuration.
         """
-        # TODO: Implement based on actual LCPS School Locator API
-        # This is a placeholder structure
-
         try:
-            # Example API call structure (needs real endpoint details)
-            params = {
-                'lat': lat,
-                'lon': lon,
-                'address': address,
-                'format': 'json'
-            }
+            # Route to county-specific API implementation
+            county_name = self.config.county_name
 
-            # This will fail until we have real endpoint - that's expected
-            # response = requests.get(api_endpoint, params=params, timeout=10)
-            # response.raise_for_status()
-            # data = response.json()
+            if county_name == "loudoun":
+                # Use LCPS School Locator API (Loudoun County GIS)
+                from core.school_api_lcps import get_lcps_schools
+                return get_lcps_schools(lat, lon, address)
 
-            # Parse response and create School objects
-            # Return dict with elementary, middle, high
+            elif county_name == "athens_clarke":
+                # Athens uses CSV-based lookup (not API)
+                # This should be handled by _get_schools_from_csv instead
+                return None
 
-            # Return None for now (configuration pending)
-            return None
+            else:
+                # Other counties: Add implementations as needed
+                print(f"School API not yet implemented for {county_name}")
+                return None
 
         except Exception as e:
             print(f"Error querying school API: {e}")
