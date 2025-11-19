@@ -58,7 +58,7 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== ZONING & LAND USE =====
     zoning_data_source="arcgis",  # Loudoun County GIS REST API
-    zoning_api_endpoint="TODO: Get from loudoun_county_data_sources.md - Loudoun County GIS REST API endpoint for zoning layer",
+    zoning_api_endpoint="https://logis.loudoun.gov/gis/rest/services/COL/Zoning/MapServer/3/query",  # Layer 3: Current Zoning
     zoning_portal_url="https://logis.loudoun.gov/",  # Verified from research
 
     # 7 incorporated towns with separate zoning ordinances
@@ -117,7 +117,7 @@ LOUDOUN_CONFIG = CountyConfig(
     # ===== FEATURE FLAGS =====
     has_school_data=False,   # TODO: Implement in Phase 3
     has_crime_data=False,    # TODO: Implement in Phase 4
-    has_zoning_data=False,   # TODO: Implement in Phase 5
+    has_zoning_data=True,    # ✅ Phase 1 complete - County GIS working!
 
     # ===== VALIDATION =====
     can_validate_locally=True,  # Developer lives in Loudoun County!
