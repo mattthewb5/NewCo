@@ -13,12 +13,15 @@ Research documented in: docs/lcps_school_locator_research.md
 
 Last Updated: November 2025
 Phase: 3 - School Data (Week 4)
-Status: API integration complete
+Status: API integration complete, performance data framework ready
+
+Performance Data Documentation: docs/virginia_school_performance.md
 """
 
 import requests
 from typing import Dict, Optional, Any
 from dataclasses import dataclass
+import json
 
 
 @dataclass
@@ -43,6 +46,10 @@ class LCPSSchoolResult:
         middle_opened: Year middle school opened
         high_opened: Year high school opened
 
+        elementary_performance: Performance metrics (enrollment, test scores, etc.)
+        middle_performance: Performance metrics
+        high_performance: Performance metrics
+
         success: Whether lookup was successful
         error_message: Error details if unsuccessful
     """
@@ -61,6 +68,11 @@ class LCPSSchoolResult:
     elementary_opened: Optional[str] = None
     middle_opened: Optional[str] = None
     high_opened: Optional[str] = None
+
+    # Performance metrics (from Virginia VDOE data)
+    elementary_performance: Optional[Dict[str, Any]] = None
+    middle_performance: Optional[Dict[str, Any]] = None
+    high_performance: Optional[Dict[str, Any]] = None
 
     success: bool = False
     error_message: Optional[str] = None
@@ -137,6 +149,22 @@ class LCPSSchoolAPI:
                     result.high_name = hs_details.get('NAME')
                     result.high_number = str(hs_details.get('SCH_NUM', ''))
                     result.high_opened = str(hs_details.get('DATE_OPENED', ''))
+
+            # Enrich with performance data (enrollment, test scores, etc.)
+            if es_code and result.elementary_number:
+                result.elementary_performance = self.get_performance_data(
+                    es_code, result.elementary_number
+                )
+
+            if ms_code and result.middle_number:
+                result.middle_performance = self.get_performance_data(
+                    ms_code, result.middle_number
+                )
+
+            if hs_code and result.high_number:
+                result.high_performance = self.get_performance_data(
+                    hs_code, result.high_number
+                )
 
             # Mark as successful if we got at least one school
             if es_code or ms_code or hs_code:
@@ -221,6 +249,148 @@ class LCPSSchoolAPI:
         except Exception as e:
             print(f"Error getting school details for {school_code}: {e}")
             return None
+
+    def get_performance_data(self, school_code: str, school_number: str) -> Optional[Dict[str, Any]]:
+        """
+        Get Virginia performance data for a school.
+
+        Args:
+            school_code: LCPS school code (e.g., 'CED', 'TMS')
+            school_number: School number (e.g., '109', '215')
+
+        Returns:
+            Dictionary with performance metrics or None if unavailable
+
+        Note:
+            Currently uses stub data. See docs/virginia_school_performance.md
+            for integration status and data source information.
+
+            To integrate real data:
+            1. Download VDOE CSV files or access API
+            2. Create local data cache (JSON/SQLite)
+            3. Replace _get_stub_performance_data with real lookup
+        """
+        try:
+            # TODO: Replace with real data source when VDOE sites are accessible
+            # Options:
+            # 1. Query Virginia Open Data API (Socrata SODA)
+            # 2. Load from cached VDOE CSV files
+            # 3. Query Virginia School Quality Profiles API (when available)
+
+            # For now, return stub data for known schools
+            return self._get_stub_performance_data(school_code, school_number)
+
+        except Exception as e:
+            print(f"Error getting performance data: {e}")
+            return None
+
+    def _get_stub_performance_data(self, school_code: str, school_number: str) -> Optional[Dict[str, Any]]:
+        """
+        Stub implementation with sample performance data.
+
+        This provides realistic test data structure while VDOE sources are unavailable.
+        Real data integration should maintain this structure for compatibility.
+
+        Data source: SchoolDigger research (verified accurate for Cedar Lane ES)
+        """
+        # Sample data for known schools (from SchoolDigger research)
+        stub_data = {
+            'CED': {  # Cedar Lane Elementary
+                'school_id': '053109',
+                'enrollment': 698,
+                'student_teacher_ratio': 12.9,
+                'accreditation_status': 'Fully Accredited',
+                'demographics': {
+                    'white': 44,
+                    'asian': 29,
+                    'hispanic': 12,
+                    'two_or_more': 8,
+                    'african_american': 7
+                },
+                'rankings': {
+                    'state_rank': 150,
+                    'state_total': 1114,
+                    'percentile': 86.5
+                },
+                'notes': 'Top 15% in Virginia'
+            },
+            'TMS': {  # Trailside Middle School
+                'school_id': '053215',
+                'enrollment': None,  # Data pending
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Performance data pending - opened 2014'
+            },
+            'SBH': {  # Stone Bridge High School
+                'school_id': '053308',
+                'enrollment': None,  # Data pending
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Performance data pending - opened 2000'
+            },
+            'LEE': {  # Leesburg Elementary
+                'school_id': '053123',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Established 1980'
+            },
+            'SMM': {  # Smart's Mill Middle
+                'school_id': '053211',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Opened 2004'
+            },
+            'THS': {  # Tuscarora High School
+                'school_id': '053314',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Opened 2010'
+            },
+            'MTV': {  # Mountain View Elementary
+                'school_id': '053132',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Opened 2003'
+            },
+            'BRM': {  # Blue Ridge Middle
+                'school_id': '053202',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Established 1971'
+            },
+            'LVH': {  # Loudoun Valley High School
+                'school_id': '053305',
+                'enrollment': None,
+                'student_teacher_ratio': None,
+                'accreditation_status': 'Fully Accredited',
+                'notes': 'Established 1962'
+            }
+        }
+
+        # Return performance data if available
+        if school_code in stub_data:
+            data = stub_data[school_code].copy()
+            data['data_source'] = 'Stub Data (SchoolDigger research)'
+            data['school_year'] = '2023-2024'
+            data['last_updated'] = '2025-11-20'
+            data['is_stub_data'] = True  # Flag for identification
+            return data
+
+        # Return minimal data for unknown schools
+        return {
+            'school_id': f'053{school_number}',
+            'enrollment': None,
+            'student_teacher_ratio': None,
+            'accreditation_status': 'Unknown',
+            'data_source': 'Stub Data',
+            'is_stub_data': True,
+            'notes': 'Performance data not yet available'
+        }
 
 
 # ===== VALIDATION FUNCTION =====

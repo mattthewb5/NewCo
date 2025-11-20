@@ -306,27 +306,64 @@ class SchoolLookup:
             schools = {}
 
             if result.elementary_name:
+                # Build notes with performance data if available
+                notes = f"School #{result.elementary_number}, Opened {result.elementary_opened}"
+                perf = result.elementary_performance
+                if perf:
+                    if perf.get('enrollment'):
+                        notes += f" | Enrollment: {perf['enrollment']}"
+                    if perf.get('student_teacher_ratio'):
+                        notes += f" | S/T Ratio: {perf['student_teacher_ratio']}:1"
+                    if perf.get('notes'):
+                        notes += f" | {perf['notes']}"
+
                 schools['elementary'] = School(
                     school_id=result.elementary_code or '',
                     name=result.elementary_name,
                     school_type='Elementary',
-                    notes=f"School #{result.elementary_number}, Opened {result.elementary_opened}"
+                    enrollment=perf.get('enrollment') if perf else None,
+                    student_teacher_ratio=perf.get('student_teacher_ratio') if perf else None,
+                    notes=notes
                 )
 
             if result.middle_name:
+                notes = f"School #{result.middle_number}, Opened {result.middle_opened}"
+                perf = result.middle_performance
+                if perf:
+                    if perf.get('enrollment'):
+                        notes += f" | Enrollment: {perf['enrollment']}"
+                    if perf.get('student_teacher_ratio'):
+                        notes += f" | S/T Ratio: {perf['student_teacher_ratio']}:1"
+                    if perf.get('notes'):
+                        notes += f" | {perf['notes']}"
+
                 schools['middle'] = School(
                     school_id=result.middle_code or '',
                     name=result.middle_name,
                     school_type='Middle',
-                    notes=f"School #{result.middle_number}, Opened {result.middle_opened}"
+                    enrollment=perf.get('enrollment') if perf else None,
+                    student_teacher_ratio=perf.get('student_teacher_ratio') if perf else None,
+                    notes=notes
                 )
 
             if result.high_name:
+                notes = f"School #{result.high_number}, Opened {result.high_opened}"
+                perf = result.high_performance
+                if perf:
+                    if perf.get('enrollment'):
+                        notes += f" | Enrollment: {perf['enrollment']}"
+                    if perf.get('student_teacher_ratio'):
+                        notes += f" | S/T Ratio: {perf['student_teacher_ratio']}:1"
+                    if perf.get('notes'):
+                        notes += f" | {perf['notes']}"
+
                 schools['high'] = School(
                     school_id=result.high_code or '',
                     name=result.high_name,
                     school_type='High',
-                    notes=f"School #{result.high_number}, Opened {result.high_opened}"
+                    enrollment=perf.get('enrollment') if perf else None,
+                    student_teacher_ratio=perf.get('student_teacher_ratio') if perf else None,
+                    notes=notes
                 )
 
             return schools if schools else None
