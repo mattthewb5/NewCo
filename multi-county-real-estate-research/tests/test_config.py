@@ -112,7 +112,7 @@ def test_loudoun_config():
     assert loudoun.is_primary_county == True, "Loudoun should be primary county"
 
     # Features
-    assert loudoun.has_school_data == False, "Loudoun school data not implemented yet"
+    assert loudoun.has_school_data == True, "Loudoun school data implemented (Phase 3 complete!)"
     assert loudoun.has_crime_data == False, "Loudoun crime data not implemented yet"
     assert loudoun.has_zoning_data == True, "Loudoun zoning data implemented (Phase 1 complete!)"
 
@@ -172,10 +172,10 @@ def test_get_counties_with_feature():
     """Test getting counties by feature."""
     print("\nTesting get_counties_with_feature()...")
 
-    # Athens has all features, Loudoun has zoning only
+    # Athens has all features, Loudoun has schools and zoning (Phase 3 complete!)
     with_schools = get_counties_with_feature('school')
     assert "athens_clarke" in with_schools, "Athens should have school data"
-    assert "loudoun" not in with_schools, "Loudoun should not have school data yet"
+    assert "loudoun" in with_schools, "Loudoun should have school data (Phase 3 complete!)"
 
     with_crime = get_counties_with_feature('crime')
     assert "athens_clarke" in with_crime, "Athens should have crime data"

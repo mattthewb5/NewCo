@@ -22,6 +22,12 @@ from dataclasses import dataclass, field
 
 from config import CountyConfig, get_county_config
 
+# Import county-specific APIs
+try:
+    from core.school_api_lcps import LCPSSchoolAPI
+except ImportError:
+    LCPSSchoolAPI = None  # Not available in all environments
+
 
 @dataclass
 class School:
@@ -256,34 +262,77 @@ class SchoolLookup:
             Dictionary with elementary, middle, high schools or None if failed
 
         Note:
-            API format varies by district. This is a template that
-            needs to be adapted based on actual API structure.
+            API format varies by district. This method routes to
+            county-specific implementations.
         """
-        # TODO: Implement based on actual LCPS School Locator API
-        # This is a placeholder structure
-
         try:
-            # Example API call structure (needs real endpoint details)
-            params = {
-                'lat': lat,
-                'lon': lon,
-                'address': address,
-                'format': 'json'
-            }
+            # Route to county-specific API implementation
+            # LCPS (Loudoun County) uses ArcGIS REST API
+            if 'logis.loudoun.gov' in api_endpoint and LCPSSchoolAPI:
+                return self._query_lcps_api(lat, lon)
 
-            # This will fail until we have real endpoint - that's expected
-            # response = requests.get(api_endpoint, params=params, timeout=10)
-            # response.raise_for_status()
-            # data = response.json()
+            # Athens Clarke County would use CSV lookup (handled separately)
+            # Future counties can add their own implementations here
 
-            # Parse response and create School objects
-            # Return dict with elementary, middle, high
-
-            # Return None for now (configuration pending)
+            # Fallback: No implementation for this API endpoint
             return None
 
         except Exception as e:
             print(f"Error querying school API: {e}")
+            return None
+
+    def _query_lcps_api(self, lat: float, lon: float) -> Optional[Dict[str, Any]]:
+        """
+        Query LCPS (Loudoun County) school locator API.
+
+        Args:
+            lat: Latitude
+            lon: Longitude
+
+        Returns:
+            Dictionary with elementary, middle, high School objects
+        """
+        if not LCPSSchoolAPI:
+            return None
+
+        try:
+            api = LCPSSchoolAPI()
+            result = api.get_schools(lat, lon)
+
+            if not result.success:
+                return None
+
+            # Convert to School objects
+            schools = {}
+
+            if result.elementary_name:
+                schools['elementary'] = School(
+                    school_id=result.elementary_code or '',
+                    name=result.elementary_name,
+                    school_type='Elementary',
+                    notes=f"School #{result.elementary_number}, Opened {result.elementary_opened}"
+                )
+
+            if result.middle_name:
+                schools['middle'] = School(
+                    school_id=result.middle_code or '',
+                    name=result.middle_name,
+                    school_type='Middle',
+                    notes=f"School #{result.middle_number}, Opened {result.middle_opened}"
+                )
+
+            if result.high_name:
+                schools['high'] = School(
+                    school_id=result.high_code or '',
+                    name=result.high_name,
+                    school_type='High',
+                    notes=f"School #{result.high_number}, Opened {result.high_opened}"
+                )
+
+            return schools if schools else None
+
+        except Exception as e:
+            print(f"Error querying LCPS API: {e}")
             return None
 
     def get_school_performance(self, school: School) -> School:
