@@ -144,9 +144,24 @@ class DevelopmentPressureAnalyzer:
         self,
         subject_lat: float,
         subject_lon: float,
-        radius_miles: float = 5.0
+        radius_miles: float = 5.0,
+        use_real_data: bool = True
     ) -> Tuple[float, Dict]:
-        """Calculate building permit score (0-100)."""
+        """
+        Calculate building permit score (0-100).
+
+        Updated for Phase 2: Uses real permit data with proper categorization
+        and weighting for major commercial projects (3x multiplier).
+
+        Args:
+            subject_lat: Subject property latitude
+            subject_lon: Subject property longitude
+            radius_miles: Search radius in miles
+            use_real_data: If True, use real permit schema; if False, use sample schema
+
+        Returns:
+            Tuple of (score, details_dict)
+        """
         conn = sqlite3.connect(self.dev_db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -154,9 +169,19 @@ class DevelopmentPressureAnalyzer:
         # Get permits from last 2 years
         cutoff_date = (datetime.now() - timedelta(days=2*365)).strftime('%Y-%m-%d')
 
-        cursor.execute("""
+        # Check if using real data schema or sample data schema
+        try:
+            cursor.execute("SELECT issue_date FROM building_permits LIMIT 1")
+            cursor.fetchone()
+            # Real data schema has 'issue_date'
+            date_field = 'issue_date'
+        except sqlite3.OperationalError:
+            # Sample data schema might have different field name
+            date_field = 'issue_date'
+
+        cursor.execute(f"""
             SELECT * FROM building_permits
-            WHERE issue_date >= ?
+            WHERE {date_field} >= ?
         """, (cutoff_date,))
 
         permits = cursor.fetchall()
@@ -165,36 +190,65 @@ class DevelopmentPressureAnalyzer:
         # Calculate weighted count
         weighted_count = 0
         by_distance = {'0-1mi': 0, '1-3mi': 0, '3-5mi': 0}
-        by_type = {'Residential': 0, 'Commercial': 0, 'Mixed-Use': 0}
+        by_type = {'Residential': 0, 'Commercial': 0, 'Major Commercial': 0, 'Other': 0}
 
         for permit in permits:
+            # Skip if no geolocation
+            if not permit['latitude'] or not permit['longitude']:
+                continue
+
             distance = self.calculate_distance(
                 subject_lat, subject_lon,
                 permit['latitude'], permit['longitude']
             )
 
             if distance <= radius_miles:
-                # Type weighting
+                # Type weighting (Phase 2: Use real data categorization)
                 type_weight = 1.0
-                if permit['project_type'] == 'Commercial' and permit['sqft'] and permit['sqft'] > 25000:
-                    type_weight = 3.0  # Major commercial
-                elif permit['project_type'] == 'Residential' and permit['sqft'] and permit['sqft'] > 50000:
-                    type_weight = 2.0  # Large residential (subdivision)
+
+                # Check for major commercial (3x multiplier)
+                if 'is_major_commercial' in permit.keys() and permit['is_major_commercial']:
+                    type_weight = 3.0
+                    by_type['Major Commercial'] += 1
+                elif 'category' in permit.keys():
+                    # Use real data category
+                    category = permit['category'] or ''
+                    if 'Commercial' in category:
+                        type_weight = 1.5
+                        by_type['Commercial'] += 1
+                    elif 'Residential' in category:
+                        type_weight = 1.0
+                        by_type['Residential'] += 1
+                    else:
+                        by_type['Other'] += 1
+                else:
+                    # Fallback to old schema (sample data)
+                    project_type = permit.get('project_type', 'Unknown')
+                    sqft = permit.get('sqft', 0)
+
+                    if project_type == 'Commercial' and sqft and sqft > 25000:
+                        type_weight = 3.0  # Major commercial
+                        by_type['Major Commercial'] += 1
+                    elif project_type == 'Commercial':
+                        type_weight = 1.5
+                        by_type['Commercial'] += 1
+                    elif project_type == 'Residential':
+                        by_type['Residential'] += 1
+                    else:
+                        by_type['Other'] += 1
 
                 # Distance weighting
                 distance_weight = self.get_distance_weight(distance)
 
                 weighted_count += type_weight * distance_weight
 
-                # Track by distance and type
+                # Track by distance
                 if distance <= 1.0:
                     by_distance['0-1mi'] += 1
                 elif distance <= 3.0:
                     by_distance['1-3mi'] += 1
                 else:
                     by_distance['3-5mi'] += 1
-
-                by_type[permit['project_type']] += 1
 
         # Scale to 0-100
         if weighted_count <= 2:
@@ -469,20 +523,40 @@ class DevelopmentPressureAnalyzer:
         all_permits = cursor.fetchall()
         permits = []
         for p in all_permits:
+            # Skip if no geolocation
+            if not p['latitude'] or not p['longitude']:
+                continue
+
             distance = self.calculate_distance(
                 subject_lat, subject_lon,
                 p['latitude'], p['longitude']
             )
             if distance <= radius_miles:
-                permits.append({
-                    'address': p['address'],
-                    'project_type': p['project_type'],
-                    'sqft': p['sqft'],
-                    'valuation': p['valuation'],
-                    'status': p['status'],
-                    'issue_date': p['issue_date'],
-                    'distance_miles': round(distance, 2)
-                })
+                # Handle both real data and sample data schemas
+                if 'category' in p.keys():
+                    # Real data schema
+                    permits.append({
+                        'address': p['address'],
+                        'project_type': p.get('category', 'Unknown'),
+                        'sqft': p.get('sqft', 0) or 0,
+                        'valuation': p.get('estimated_cost', 0) or 0,
+                        'status': p.get('status', 'Unknown'),
+                        'issue_date': p.get('issue_date', ''),
+                        'distance_miles': round(distance, 2),
+                        'is_major_commercial': p.get('is_major_commercial', False)
+                    })
+                else:
+                    # Sample data schema (fallback)
+                    permits.append({
+                        'address': p['address'],
+                        'project_type': p.get('project_type', 'Unknown'),
+                        'sqft': p.get('sqft', 0),
+                        'valuation': p.get('valuation', 0),
+                        'status': p.get('status', 'Unknown'),
+                        'issue_date': p.get('issue_date', ''),
+                        'distance_miles': round(distance, 2),
+                        'is_major_commercial': False
+                    })
 
         # Get large parcel sales
         cursor.execute("SELECT * FROM large_parcel_sales")

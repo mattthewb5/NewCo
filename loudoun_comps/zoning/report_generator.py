@@ -19,6 +19,7 @@ import logging
 
 from development_pressure_analyzer import DevelopmentPressureAnalyzer
 from map_generator import MapGenerator
+from location_analyzer import LocationQualityAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class DevelopmentReportGenerator:
         self.sales_db_path = sales_db_path
         self.analyzer = DevelopmentPressureAnalyzer(dev_db_path)
         self.map_generator = MapGenerator(dev_db_path)
+        self.location_analyzer = LocationQualityAnalyzer(dev_db_path)
 
     def generate_report(
         self,
@@ -70,13 +72,18 @@ class DevelopmentReportGenerator:
             subject_lat, subject_lon
         )
 
+        # Get location quality analysis (NEW - Phase 2!)
+        location_result = self.location_analyzer.analyze_location(
+            subject_lat, subject_lon, subject_address
+        )
+
         # Create map data
         map_data = self.map_generator.create_map_data(
             subject_lat, subject_lon, subject_address
         )
 
         # Generate HTML report
-        html = self._build_html_report(pressure_result, map_data, subject_address)
+        html = self._build_html_report(pressure_result, location_result, map_data, subject_address)
 
         # Write to file
         with open(output_path, 'w') as f:
@@ -89,10 +96,11 @@ class DevelopmentReportGenerator:
     def _build_html_report(
         self,
         pressure_result: Dict,
+        location_result: Dict,
         map_data: Dict,
         subject_address: str
     ) -> str:
-        """Build complete HTML report."""
+        """Build complete HTML report with location analysis (Phase 2)."""
 
         # Convert map data to JSON
         map_data_json = json.dumps(map_data, indent=2)
