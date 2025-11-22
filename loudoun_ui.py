@@ -61,7 +61,7 @@ def show_header():
     with col1:
         st.metric("Zoning Data", "✅ Operational", delta="Live GIS")
     with col2:
-        st.metric("School Data", "⏳ Pending", delta="API Research")
+        st.metric("School Data", "✅ Operational", delta="LCPS API")
     with col3:
         st.metric("Crime Data", "⏳ Pending", delta="Sheriff Contact")
 
@@ -224,13 +224,13 @@ def show_school_results(address: str, lat: float = None, lon: float = None):
             """)
         return
 
-    # If we have data, show results
-    with st.spinner("Looking up school assignments..."):
+    # School data is available - fetch and display
+    with st.spinner("Looking up school assignments from LCPS..."):
         try:
-            result = st.session_state.schools.get_school_assignment(address, lat, lon)
+            result = st.session_state.schools.get_schools(address, lat, lon)
 
             if result.success:
-                st.success(f"✅ Schools for {result.district_name}")
+                st.success(f"✅ School assignments from {result.district_name}")
 
                 # Create columns for each school level
                 cols = st.columns(3)
@@ -245,20 +245,42 @@ def show_school_results(address: str, lat: float = None, lon: float = None):
                     with col:
                         if school:
                             st.markdown(f"**{level} School**")
-                            st.markdown(f"📚 **{school.name}**")
+                            st.markdown(f"### 📚 {school.name}")
+
                             if school.address:
-                                st.caption(school.address)
+                                st.markdown(f"📍 {school.address}")
+
                             if school.phone:
-                                st.caption(f"☎️ {school.phone}")
-                            if school.rating:
-                                st.metric("Rating", school.rating)
+                                st.markdown(f"☎️ {school.phone}")
+
+                            if school.website:
+                                st.markdown(f"🌐 [School Website]({school.website})")
+
+                            if school.notes and 'zone_map' in school.notes.lower():
+                                # Extract zone map URL from notes
+                                import re
+                                zone_map_match = re.search(r'Zone map: (https?://[^\s]+)', school.notes)
+                                if zone_map_match:
+                                    zone_map_url = zone_map_match.group(1)
+                                    st.markdown(f"🗺️ [Attendance Zone Map]({zone_map_url})")
+
+                            if school.school_id and school.school_id != 'UNKNOWN':
+                                st.caption(f"School Code: {school.school_id}")
+
                         else:
                             st.caption(f"No {level.lower()} school assigned")
+
+                # Data source
+                st.caption("📊 Data source: LCPS School Locator API")
+
             else:
                 st.error(f"❌ School lookup failed: {result.error_message}")
+                if result.notes:
+                    st.info(result.notes)
 
         except Exception as e:
             st.error(f"❌ Error during school lookup: {e}")
+            st.exception(e)
 
 
 def show_crime_results(address: str, lat: float = None, lon: float = None):
@@ -337,11 +359,11 @@ def show_summary(address: str):
     **County**: Loudoun County, Virginia
     **Data Status**:
     - Zoning: ✅ Live data from Loudoun County GIS
-    - Schools: ⏳ Pending LCPS API integration
+    - Schools: ✅ Live data from LCPS School Locator API
     - Crime: ⏳ Pending LCSO API integration
 
     *This is a demonstration of the Loudoun County backend system.*
-    *Full functionality available once all API integrations are complete.*
+    *Zoning and Schools are fully operational with real-time data!*
     """)
 
 
@@ -388,13 +410,13 @@ def main():
 
         with col2:
             st.markdown("""
-            **🏫 Schools (Pending)**
+            **🏫 Schools (Operational)**
             - Elementary assignment
             - Middle school assignment
             - High school assignment
-            - School ratings
-            - Performance metrics
-            - Virginia Quality Profiles
+            - School contact info
+            - Website links
+            - Attendance zone maps
             """)
 
         with col3:
@@ -409,7 +431,7 @@ def main():
             """)
 
         st.markdown("---")
-        st.caption("💡 **Developer Note**: This system is built on real Loudoun County data sources and is ready for testing as APIs become available.")
+        st.caption("💡 **Developer Note**: This system is built on real Loudoun County data sources. Zoning and Schools are fully operational with live API data!")
 
         return
 

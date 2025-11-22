@@ -33,10 +33,10 @@ LOUDOUN_CONFIG = CountyConfig(
 
     # ===== SCHOOLS =====
     school_district_name="Loudoun County Public Schools (LCPS)",
-    school_zone_data_source="api",  # LCPS has school locator API
+    school_zone_data_source="api",  # LCPS School Locator API (✅ OPERATIONAL!)
     school_zone_file_path=None,
-    school_api_endpoint="TODO: Research LCPS School Locator API endpoint - see docs/lcps_school_locator_research.md",
-    school_boundary_tool_url="TODO: LCPS boundary tool URL from research",
+    school_api_endpoint="https://lcpsplanning.com/loudounlabel/index4.php",  # ✅ INTEGRATED!
+    school_boundary_tool_url="https://webinter.lcps.org/lcps_locate/",  # Public-facing tool
 
     # Virginia school performance (from research report)
     state_school_performance_source="Virginia School Quality Profiles",
@@ -119,7 +119,7 @@ LOUDOUN_CONFIG = CountyConfig(
     planning_department_website="https://www.loudoun.gov/planning",
 
     # ===== FEATURE FLAGS =====
-    has_school_data=False,   # Phase 3 - Infrastructure complete, API endpoint pending
+    has_school_data=True,    # ✅ Phase 3 COMPLETE - LCPS School Locator API integrated!
     has_crime_data=False,    # Phase 2 - Infrastructure complete, API endpoint pending
     has_zoning_data=True,    # ✅ Phase 1 complete - County GIS working!
 

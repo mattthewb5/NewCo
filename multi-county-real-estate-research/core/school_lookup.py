@@ -256,34 +256,102 @@ class SchoolLookup:
             Dictionary with elementary, middle, high schools or None if failed
 
         Note:
-            API format varies by district. This is a template that
-            needs to be adapted based on actual API structure.
+            Currently supports LCPS School Locator API.
+            Other districts can be added as needed.
         """
-        # TODO: Implement based on actual LCPS School Locator API
-        # This is a placeholder structure
+        # Check if this is LCPS (Loudoun County)
+        if 'lcpsplanning.com' in api_endpoint or self.config.county_name == 'loudoun':
+            return self._query_lcps_api(address)
+        else:
+            # Generic API handling for other districts
+            try:
+                params = {
+                    'lat': lat,
+                    'lon': lon,
+                    'address': address,
+                    'format': 'json'
+                }
 
+                response = requests.get(api_endpoint, params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+
+                # Parse response - structure varies by district
+                # This is a template that needs customization
+                return None
+
+            except Exception as e:
+                print(f"Error querying school API: {e}")
+                return None
+
+    def _query_lcps_api(self, address: str) -> Optional[Dict[str, Any]]:
+        """
+        Query LCPS (Loudoun County Public Schools) School Locator API.
+
+        Args:
+            address: Full address string
+
+        Returns:
+            Dictionary with 'elementary', 'middle', 'high' School objects
+        """
         try:
-            # Example API call structure (needs real endpoint details)
-            params = {
-                'lat': lat,
-                'lon': lon,
-                'address': address,
-                'format': 'json'
-            }
+            # Import LCPS API client
+            from utils.lcps_school_api import get_school_assignments
 
-            # This will fail until we have real endpoint - that's expected
-            # response = requests.get(api_endpoint, params=params, timeout=10)
-            # response.raise_for_status()
-            # data = response.json()
+            # Get assignments from LCPS API
+            assignments = get_school_assignments(address)
 
-            # Parse response and create School objects
-            # Return dict with elementary, middle, high
+            if not assignments:
+                return None
 
-            # Return None for now (configuration pending)
-            return None
+            # Convert to School objects
+            result = {}
+
+            # Elementary school
+            if assignments.get('elementary'):
+                elem_data = assignments['elementary']
+                result['elementary'] = School(
+                    school_id=elem_data.get('code', 'UNKNOWN'),
+                    name=elem_data.get('name', 'Unknown Elementary'),
+                    school_type='Elementary',
+                    address=elem_data.get('address'),
+                    phone=elem_data.get('phone'),
+                    website=elem_data.get('website'),
+                    notes=f"Zone map: {elem_data.get('zone_map')}" if elem_data.get('zone_map') else None
+                )
+
+            # Middle school
+            if assignments.get('middle'):
+                middle_data = assignments['middle']
+                result['middle'] = School(
+                    school_id=middle_data.get('code', 'UNKNOWN'),
+                    name=middle_data.get('name', 'Unknown Middle School'),
+                    school_type='Middle',
+                    address=middle_data.get('address'),
+                    phone=middle_data.get('phone'),
+                    website=middle_data.get('website'),
+                    notes=f"Zone map: {middle_data.get('zone_map')}" if middle_data.get('zone_map') else None
+                )
+
+            # High school
+            if assignments.get('high'):
+                high_data = assignments['high']
+                result['high'] = School(
+                    school_id=high_data.get('code', 'UNKNOWN'),
+                    name=high_data.get('name', 'Unknown High School'),
+                    school_type='High',
+                    address=high_data.get('address'),
+                    phone=high_data.get('phone'),
+                    website=high_data.get('website'),
+                    notes=f"Zone map: {high_data.get('zone_map')}" if high_data.get('zone_map') else None
+                )
+
+            return result
 
         except Exception as e:
-            print(f"Error querying school API: {e}")
+            print(f"Error querying LCPS API: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_school_performance(self, school: School) -> School:
