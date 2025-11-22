@@ -27,3 +27,10 @@ Thumbs.db
 loudoun_comps/*.db
 loudoun_comps/data/
 loudoun_comps/__pycache__/
+# Generated output files
+loudoun_comps/*.csv
+loudoun_comps/*.html
+loudoun_comps/*.png
+loudoun_comps/*.log
+loudoun_comps/*.json
+loudoun_comps/*.pkl
