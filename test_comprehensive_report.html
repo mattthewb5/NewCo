@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Analysis - 43500 Tuckaway Pl, Leesburg, VA 20176</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .key-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        /* Sections */
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #1e40af;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #374151;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        /* Executive Summary */
+        .executive-summary {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+
+        .overall-rating {
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .rating-excellent { background: #10b981; color: white; }
+        .rating-very-good { background: #3b82f6; color: white; }
+        .rating-good { background: #8b5cf6; color: white; }
+        .rating-fair { background: #f59e0b; color: white; }
+        .rating-caution { background: #ef4444; color: white; }
+
+        .strength-list, .concern-list {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .strength-list li {
+            padding: 10px;
+            margin: 8px 0;
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            border-radius: 5px;
+        }
+
+        .concern-list li {
+            padding: 10px;
+            margin: 8px 0;
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            border-radius: 5px;
+        }
+
+        /* Score Display */
+        .score-display {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px;
+            color: white;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .score-excellent { background: linear-gradient(135deg, #10b981, #059669); }
+        .score-very-good { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .score-good { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .score-fair { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .score-poor { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .rating-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        tr:hover {
+            background-color: #f9fafb;
+        }
+
+        /* Map */
+        #map {
+            height: 500px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 30px 0;
+        }
+
+        /* Grid Layouts */
+        .two-column {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        /* Warning/Positive Items */
+        .warning-item, .positive-item {
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .warning-item {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        .positive-item {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        /* Print Styles */
+        @media print {
+            .hero {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 1.8em;
+            }
+            .key-metrics {
+                grid-template-columns: 1fr;
+            }
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <h1>🏠 43500 Tuckaway Pl, Leesburg, VA 20176</h1>
+        <div class="key-metrics">
+            <div class="metric-card">
+                <div class="metric-label">Estimated Value</div>
+                <div class="metric-value">$975,844</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Location Quality</div>
+                <div class="metric-value">8.0/10</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Development Pressure</div>
+                <div class="metric-value">75.3/100</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Confidence</div>
+                <div class="metric-value">Very High</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Executive Summary -->
+        <div class="section executive-summary">
+            <h2>📋 Executive Summary</h2>
+            <div class="overall-rating rating-very-good">
+                Overall Rating: Very Good
+            </div>
+
+            <p style="font-size: 1.1em; line-height: 1.8; margin: 20px 0;">
+                This property is estimated at $975,844 with 100% confidence. The location quality is rated Very Good (8.0/10), with a +0% value impact compared to similar properties. Development pressure in the area is Very High (75.3/100), indicating very active development and growth.
+            </p>
+
+            <h3>✅ Key Strengths</h3>
+            <ul class="strength-list">
+                <li>Excellent location quality (8.0/10)</li>
+<li>High valuation confidence (100%)</li>
+            </ul>
+
+            <h3>⚠️ Important Considerations</h3>
+            <ul class="concern-list">
+                <li>Very close to Route 7 (Leesburg Pike) (0.32 mi) - potential noise and air quality concerns</li>
+<li>Located in Data Center Corridor - ongoing commercial development activity</li>
+<li>High development activity in area may impact neighborhood character</li>
+            </ul>
+        </div>
+
+        <!-- Location Quality Analysis -->
+        <div class="section">
+            <h2>📍 Location Quality Analysis</h2>
+
+            <div class="score-display">
+                <div class="score-circle score-very-good">
+                    8.0
+                </div>
+                <div>
+                    <span class="rating-badge score-very-good">
+                        Very Good
+                    </span>
+                </div>
+                <div style="margin-top: 15px; font-size: 1.2em;">
+                    <strong>Value Impact:</strong>
+                    <span style="color: #ef4444;">
+                        +0%
+                    </span>
+                    vs comparable properties
+                </div>
+            </div>
+
+            <h3>Overall Assessment</h3>
+            <p style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                This property has a very good location with a quality score of 8.0/10. The property is situated on a collector road. Key advantages include: Good metro access - Ashburn station 2.55 mi away. Important considerations: Very close to Route 7 (Leesburg Pike) (0.32 mi) - potential noise and air quality concerns. 
+            </p>
+
+            <h3>🚨 Location Warnings</h3>
+            <div class='warning-item'>⚠️ Very close to Route 7 (Leesburg Pike) (0.32 mi) - potential noise and air quality concerns</div>
+<div class='warning-item'>⚠️ Located in Data Center Corridor - ongoing commercial development activity</div>
+
+
+            <h3>✅ Location Positives</h3>
+            <div class='positive-item'>✓ Good metro access - Ashburn station 2.55 mi away</div>
+
+
+            <div class="two-column">
+                <div>
+                    <h3>🛣️ Highway Proximity</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Highway</th>
+                                <th>Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Route 7 (Leesburg Pike)</td><td>0.32 miles</td></tr>
+<tr><td>Greenway (267 Toll)</td><td>2.73 miles</td></tr>
+<tr><td>Route 28 (Sully Road)</td><td>3.72 miles</td></tr>
+<tr><td>Route 50 (John Mosby Highway)</td><td>4.17 miles</td></tr>
+<tr><td>Dulles Toll Road (267)</td><td>6.63 miles</td></tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <div>
+                    <h3>🚇 Metro Stations</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Station</th>
+                                <th>Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Ashburn</td><td>2.55 miles</td></tr>
+<tr><td>Loudoun Gateway</td><td>3.41 miles</td></tr>
+<tr><td>Dulles Airport</td><td>6.48 miles</td></tr>
+<tr><td>Innovation Center</td><td>6.64 miles</td></tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <h3>🛤️ Road Classification</h3>
+            <p style="background: #e0f2fe; padding: 15px; border-radius: 8px; font-weight: 500;">
+                Collector Road
+            </p>
+        </div>
+
+        <!-- Property Valuation -->
+        <div class="section">
+            <h2>💰 Property Valuation</h2>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="font-size: 3em; font-weight: bold; color: #1e40af;">
+                    $975,844
+                </div>
+                <div style="font-size: 1.2em; color: #6b7280; margin-top: 10px;">
+                    Range: $927,051 -
+                    $1,024,636
+                </div>
+                <div style="margin-top: 15px;">
+                    <span class="rating-badge score-excellent">
+                        Very High Confidence (100%)
+                    </span>
+                </div>
+            </div>
+
+            <h3>📊 Valuation Details</h3>
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Price per Square Foot</td>
+                    <td>$304.95</td>
+                </tr>
+                <tr>
+                    <td>Methodology</td>
+                    <td>Comparable Sales Analysis</td>
+                </tr>
+                <tr>
+                    <td>Comparable Sales Used</td>
+                    <td>7</td>
+                </tr>
+                <tr>
+                    <td>Analysis Date</td>
+                    <td>2024-11-22</td>
+                </tr>
+            </table>
+
+            <h3>🏘️ Comparable Sales (Top 5)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Sale Price</th>
+                        <th>Sqft</th>
+                        <th>$/Sqft</th>
+                        <th>Date</th>
+                        <th>Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                <td>3731 Birch Way</td>
+                <td>$871,876</td>
+                <td>2,785</td>
+                <td>$313.06</td>
+                <td>2024-01-16</td>
+                <td>0.23 mi</td>
+            </tr>
+<tr>
+                <td>8500 Cedar St</td>
+                <td>$1,034,271</td>
+                <td>3,360</td>
+                <td>$307.82</td>
+                <td>2024-03-26</td>
+                <td>0.89 mi</td>
+            </tr>
+<tr>
+                <td>2268 Birch Way</td>
+                <td>$1,078,488</td>
+                <td>3,652</td>
+                <td>$295.31</td>
+                <td>2024-04-23</td>
+                <td>1.01 mi</td>
+            </tr>
+<tr>
+                <td>1166 Willow St</td>
+                <td>$919,916</td>
+                <td>3,328</td>
+                <td>$276.42</td>
+                <td>2024-03-28</td>
+                <td>1.03 mi</td>
+            </tr>
+<tr>
+                <td>3250 Willow Ct</td>
+                <td>$1,016,990</td>
+                <td>3,177</td>
+                <td>$320.11</td>
+                <td>2024-01-01</td>
+                <td>2.02 mi</td>
+            </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Development Context -->
+        <div class="section">
+            <h2>🏗️ Development Context</h2>
+
+            <div class="score-display">
+                <div class="score-circle score-poor">
+                    75.3
+                </div>
+                <div>
+                    <span class="rating-badge score-poor">
+                        Very High Development Pressure
+                    </span>
+                </div>
+            </div>
+
+            <p style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                Development pressure is very high (75/100). The area is experiencing significant development activity. 
+            </p>
+
+            <h3>📊 Component Breakdown</h3>
+            <div class="chart-container">
+                <canvas id="componentChart"></canvas>
+            </div>
+
+            <h3>📍 Activity by Distance</h3>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h4>Activity Count by Zone</h4>
+                    <table>
+                        <tr>
+                            <td><strong>0-1 mile</strong></td>
+                            <td>5 activities</td>
+                        </tr>
+                        <tr>
+                            <td><strong>1-3 miles</strong></td>
+                            <td>14 activities</td>
+                        </tr>
+                        <tr>
+                            <td><strong>3-5 miles</strong></td>
+                            <td>5 activities</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div>
+                    <h4>Component Weights</h4>
+                    <table>
+                        <tr><td>Rezoning</td><td>30%</td></tr>
+<tr><td>Permits</td><td>25%</td></tr>
+<tr><td>Land_Sales</td><td>20%</td></tr>
+<tr><td>Appreciation</td><td>15%</td></tr>
+<tr><td>Proximity</td><td>10%</td></tr>
+
+                    </table>
+                </div>
+            </div>
+
+            <h3>🔨 Nearby Permits (0-1 mile)</h3>
+            <table><thead><tr><th>Type</th><th>Description</th><th>Address</th><th>Distance</th><th>Date</th></tr></thead><tbody><tr>
+                <td>Building Permit</td>
+                <td>Retail Shopping Center</td>
+                <td>668 Cedar Dr</td>
+                <td>0.26 mi</td>
+                <td>2025-03-19</td>
+            </tr><tr>
+                <td>Building Permit</td>
+                <td>Home Addition/Renovation</td>
+                <td>1468 Commerce Dr</td>
+                <td>0.41 mi</td>
+                <td>2025-04-21</td>
+            </tr><tr>
+                <td>Building Permit</td>
+                <td>New Townhome Development</td>
+                <td>8297 Maple Blvd</td>
+                <td>0.49 mi</td>
+                <td>2025-01-22</td>
+            </tr><tr>
+                <td>Building Permit</td>
+                <td>New Single Family Home</td>
+                <td>5422 Maple Way</td>
+                <td>0.59 mi</td>
+                <td>2025-09-17</td>
+            </tr><tr>
+                <td>Rezoning</td>
+                <td>Rezoning for Planned Development</td>
+                <td>2615 Waxpool Rd</td>
+                <td>0.66 mi</td>
+                <td>2024-05-23</td>
+            </tr></tbody></table>
+        </div>
+
+        <!-- Interactive Map -->
+        <div class="section">
+            <h2>🗺️ Interactive Map</h2>
+            <div id="map"></div>
+            <div style="margin-top: 15px; font-size: 0.9em; color: #6b7280;">
+                <strong>Legend:</strong>
+                🔴 Subject Property |
+                🔵 Comparable Sales |
+                🟡 Development Activity
+            </div>
+        </div>
+
+        <!-- Report Footer -->
+        <div class="report-footer">
+            <p><strong>NewCo Real Estate Intelligence</strong></p>
+            <p>Report Generated: November 22, 2025</p>
+            <p style="margin-top: 15px; font-size: 0.85em;">
+                This report is for informational purposes only and should not be considered as professional advice.
+                Property values, location assessments, and development activity are estimates based on available data.
+                Always consult with licensed real estate professionals for official valuations and investment decisions.
+            </p>
+        </div>
+
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <script>
+        // Initialize Map
+        const mapData = {"center": {"lat": 39.0437, "lng": -77.4875}, "zoom": 13, "markers": [{"lat": 39.0437, "lng": -77.4875, "type": "subject", "title": "Subject Property", "popup": "<b>Subject Property</b><br>43500 Tuckaway Pl, Leesburg, VA 20176"}, {"lat": 39.04699843465819, "lng": -77.48578277761995, "type": "comparable", "title": "Comp #1", "popup": "<b>Comp Sale #1</b><br>3731 Birch Way<br>Sold: $871,876<br>2024-01-16"}, {"lat": 39.03531994282188, "lng": -77.4817840960308, "type": "comparable", "title": "Comp #2", "popup": "<b>Comp Sale #2</b><br>8500 Cedar St<br>Sold: $1,034,271<br>2024-03-26"}, {"lat": 39.034021001801655, "lng": -77.48212080405465, "type": "comparable", "title": "Comp #3", "popup": "<b>Comp Sale #3</b><br>2268 Birch Way<br>Sold: $1,078,488<br>2024-04-23"}, {"lat": 39.03278162419902, "lng": -77.48473371047002, "type": "comparable", "title": "Comp #4", "popup": "<b>Comp Sale #4</b><br>1166 Willow St<br>Sold: $919,916<br>2024-03-28"}, {"lat": 39.031969375282536, "lng": -77.46373706370274, "type": "comparable", "title": "Comp #5", "popup": "<b>Comp Sale #5</b><br>3250 Willow Ct<br>Sold: $1,016,990<br>2024-01-01"}, {"lat": 39.04298211283902, "lng": -77.49218966229529, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Retail Shopping Center<br>668 Cedar Dr<br>Distance: 0.26 mi"}, {"lat": 39.04238569994069, "lng": -77.49492072136009, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Home Addition/Renovation<br>1468 Commerce Dr<br>Distance: 0.41 mi"}, {"lat": 39.04088075273395, "lng": -77.4959258541393, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>New Townhome Development<br>8297 Maple Blvd<br>Distance: 0.49 mi"}, {"lat": 39.035357135767406, "lng": -77.49012941290408, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>New Single Family Home<br>5422 Maple Way<br>Distance: 0.59 mi"}, {"lat": 39.03781356464958, "lng": -77.49710716954135, "type": "development", "title": "Rezoning", "popup": "<b>Rezoning</b><br>Rezoning for Planned Development<br>2615 Waxpool Rd<br>Distance: 0.66 mi"}, {"lat": 39.02474868990056, "lng": -77.48777416694267, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>New Townhome Development<br>7374 Oak Blvd<br>Distance: 1.31 mi"}, {"lat": 39.0646954515712, "lng": -77.49693314117833, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>New Single Family Home<br>1131 Oak Blvd<br>Distance: 1.54 mi"}, {"lat": 39.04441885990026, "lng": -77.45679171023929, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Home Addition/Renovation<br>8666 Oak St<br>Distance: 1.65 mi"}, {"lat": 39.05281074924647, "lng": -77.4553665331446, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Retail Shopping Center<br>5781 Commerce Blvd<br>Distance: 1.84 mi"}, {"lat": 39.07350690882055, "lng": -77.49210556721823, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Home Addition/Renovation<br>6417 Main St<br>Distance: 2.07 mi"}, {"lat": 39.073678332961016, "lng": -77.47923812470304, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Data Center Construction<br>3765 Cedar Dr<br>Distance: 2.12 mi"}, {"lat": 39.012743073646455, "lng": -77.48353243277752, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>New Single Family Home<br>6600 Main Blvd<br>Distance: 2.15 mi"}, {"lat": 39.01264703082865, "lng": -77.49393063635517, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Retail Shopping Center<br>6757 Main Dr<br>Distance: 2.17 mi"}, {"lat": 39.07570312490359, "lng": -77.48614272591733, "type": "development", "title": "Building Permit", "popup": "<b>Building Permit</b><br>Home Addition/Renovation<br>734 Commerce Blvd<br>Distance: 2.21 mi"}, {"lat": 39.03847694995794, "lng": -77.5292281915547, "type": "development", "title": "Rezoning", "popup": "<b>Rezoning</b><br>Rezoning from Residential to Mixed Use<br>9532 Sycolin Rd<br>Distance: 2.27 mi"}]};
+        const map = L.map('map').setView([mapData.center.lat, mapData.center.lng], mapData.zoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Add markers
+        mapData.markers.forEach(marker => {
+            let iconColor = 'blue';
+            if (marker.type === 'subject') iconColor = 'red';
+            if (marker.type === 'development') iconColor = 'orange';
+
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${iconColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20]
+            });
+
+            L.marker([marker.lat, marker.lng], { icon: icon })
+                .bindPopup(marker.popup)
+                .addTo(map);
+        });
+
+        // Distance circles
+        const center = [mapData.center.lat, mapData.center.lng];
+        L.circle(center, { radius: 1609, color: '#90EE90', fillOpacity: 0.1 }).addTo(map);
+        L.circle(center, { radius: 4828, color: '#FFD700', fillOpacity: 0.05 }).addTo(map);
+        L.circle(center, { radius: 8047, color: '#87CEEB', fillOpacity: 0.03 }).addTo(map);
+
+        // Initialize Charts
+        const chartData = {"score_breakdown": {"labels": ["Rezoning", "Permits", "Land Sales", "Appreciation", "Proximity"], "data": [65.4, 100, 45.6, 77.1, 100], "weights": [30, 25, 20, 15, 10]}, "activity_by_distance": {"labels": ["0-1 mile", "1-3 miles", "3-5 miles"], "residential": [2, 6, 1], "commercial": [0, 1, 0]}};
+
+        // Component Breakdown Chart
+        const componentCtx = document.getElementById('componentChart').getContext('2d');
+        new Chart(componentCtx, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.score_breakdown.labels,
+                datasets: [{
+                    data: chartData.score_breakdown.data,
+                    backgroundColor: [
+                        '#667eea',
+                        '#764ba2',
+                        '#f093fb',
+                        '#4facfe',
+                        '#43e97b'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Development Pressure Components'
+                    }
+                }
+            }
+        });
+
+        // Activity by Distance Chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels: chartData.activity_by_distance.labels,
+                datasets: [
+                    {
+                        label: 'Residential',
+                        data: chartData.activity_by_distance.residential,
+                        backgroundColor: '#3b82f6'
+                    },
+                    {
+                        label: 'Commercial',
+                        data: chartData.activity_by_distance.commercial,
+                        backgroundColor: '#f59e0b'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Development Activity by Distance'
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
