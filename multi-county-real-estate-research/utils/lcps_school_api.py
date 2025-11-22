@@ -19,6 +19,17 @@ import re
 from typing import Dict, Optional, Tuple
 from bs4 import BeautifulSoup
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from core.logger_utils import setup_logger
+from core.cache_utils import cached
+
+# Set up logging
+logger = setup_logger(__name__)
 
 
 def parse_address_components(address: str) -> Tuple[Optional[str], Optional[str]]:
@@ -122,13 +133,17 @@ def query_lcps_school_locator(
         'z': zip_code
     }
 
+    logger.info(f"Querying LCPS API: street={street_number}, zip={zip_code}, year={school_year}")
+
     try:
         response = requests.get(base_url, params=params, timeout=10)
         response.raise_for_status()
+
+        logger.debug(f"LCPS API returned {len(response.text)} characters")
         return response.text
 
     except requests.RequestException as e:
-        print(f"Error querying LCPS API: {e}")
+        logger.error(f"LCPS API request failed: {e}")
         return None
 
 
@@ -239,11 +254,13 @@ def parse_school_data(html: str, school_class: str) -> Optional[Dict[str, str]]:
     return school_data if 'name' in school_data else None
 
 
+@cached(ttl_minutes=120)  # Cache for 2 hours - school zones don't change often
 def get_school_assignments(address: str) -> Optional[Dict[str, Optional[Dict[str, str]]]]:
     """
     Get school assignments for a full address.
 
     This is the main public function for LCPS school lookups.
+    Results are cached for 2 hours to improve performance.
 
     Args:
         address: Full address string (e.g., "43423 Cloister Pl, Leesburg, VA 20176")
@@ -261,25 +278,34 @@ def get_school_assignments(address: str) -> Optional[Dict[str, Optional[Dict[str
         HARPER PARK MS
         HERITAGE HS
     """
+    logger.info(f"Looking up school assignments for: {address}")
+
     # Parse address components
     street_number, zip_code = parse_address_components(address)
 
     if not street_number or not zip_code:
-        print(f"Could not parse address components from: {address}")
-        print(f"  Street number: {street_number}")
-        print(f"  ZIP code: {zip_code}")
+        logger.warning(f"Could not parse address components from: {address}")
+        logger.debug(f"  Street number: {street_number}, ZIP: {zip_code}")
         return None
 
     # Query API
     html = query_lcps_school_locator(street_number, zip_code)
     if not html:
-        print(f"No response from LCPS API for address: {address}")
+        logger.error(f"No response from LCPS API for address: {address}")
         return None
 
     # Parse schools
     elementary = parse_school_data(html, 'sch1')
     middle = parse_school_data(html, 'sch2')
     high = parse_school_data(html, 'sch3')
+
+    # Log results
+    if elementary or middle or high:
+        logger.info(f"Found schools - ES: {elementary.get('name') if elementary else 'None'}, "
+                   f"MS: {middle.get('name') if middle else 'None'}, "
+                   f"HS: {high.get('name') if high else 'None'}")
+    else:
+        logger.warning(f"No schools found for address: {address}")
 
     # Return structured results
     return {
